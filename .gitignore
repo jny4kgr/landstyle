@@ -4,3 +4,7 @@ node_modules/
 # 中間生成物（最終版は Sales Presentation Materials/ にある）
 output/
 tmp/
+
+# Python
+__pycache__/
+*.pyc

@@ -14,11 +14,14 @@
   uv venv .venv && uv pip install --python .venv/bin/python pymupdf opencv-python-headless numpy pillow
 
 使い方:
-  python s6_floorplan.py --pdf 図面.pdf --page 8 --floor 2F --out out/2F.png
+  python s6_floorplan.py --pdf 図面.pdf --page 8 --floor 2F --out out/2F.png --svg out/2F.svg
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import io
+from html import escape
 import math
 import re
 import unicodedata
@@ -249,8 +252,94 @@ def parse_rooms(spans, bbox):
     return rooms, keep_text
 
 
+# ---------------------------------------------------------------- SVG 出力（解析結果を読み取るだけ）
+def svg_color(rgb):
+    return "#" + "".join(f"{v:02x}" for v in rgb)
+
+
+def svg_mask(mask, color, room=None):
+    """外周と穴を1つの複合パスにまとめ、0.5px の許容誤差で簡略化する。"""
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+    parts = []
+    for contour in contours:
+        points = cv2.approxPolyDP(contour, 0.5, True).reshape(-1, 2)
+        if len(points):
+            parts.append("M" + " L".join(f"{x},{y}" for x, y in points) + " Z")
+    attr = f' data-room="{escape(room, quote=True)}"' if room is not None else ""
+    return f'<path{attr} fill="{svg_color(color)}" fill-rule="evenodd" d="{" ".join(parts)}"/>'
+
+
+def svg_text(x, y, text, font, anchor="mm", stroke=0, transform=""):
+    """Pillow のアンカーと行間を SVG のベースライン座標へ変換する。"""
+    lines = text.split("\n")
+    step = font.getbbox("A", stroke_width=stroke)[3] + stroke
+    top = y - (len(lines) - 1) * step / 2 if anchor[1] == "m" else y
+    family = ('"Hiragino Mincho ProN", serif' if "ヒラギノ" in str(font.path)
+              else '"Times New Roman", serif')
+    attrs = f' transform="{escape(transform, quote=True)}"' if transform else ""
+    result = []
+    for i, line in enumerate(lines):
+        if not line:
+            continue
+        baseline = top + i * step + font.getbbox(line, anchor=anchor)[1] - font.getbbox(line, anchor=anchor[0] + "s")[1]
+        result.append(
+            f'<text x="{x}" y="{baseline}" font-family="{escape(family, quote=True)}" '
+            f'font-size="{font.size}" text-anchor="{dict(l="start", m="middle", r="end")[anchor[0]]}" '
+            f'fill="{svg_color(LINE_RGB)}" stroke="white" stroke-width="{stroke * 2}" '
+            f'stroke-linejoin="round" paint-order="stroke fill"{attrs}>{escape(line)}</text>')
+    return "\n".join(result)
+
+
+def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang):
+    cx0, cy0, cx1, cy1 = crop
+    w, h = cx1 - cx0, cy1 - cy0
+    cut = np.s_[cy0:cy1, cx0:cx1]
+    elements = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size[0]}" height="{size[1]}" '
+        f'viewBox="0 0 {size[0]} {size[1]}">',
+        '<rect width="100%" height="100%" fill="white"/>',
+        '<g id="rooms">']
+    for room in rooms:
+        if id(room) in region and not room["erase"]:
+            elements.append(svg_mask(region[id(room)][cut], COLORS[room["ckey"]], room["cad"]))
+    elements.extend(['</g>', '<g id="walls">', svg_mask(wall[cut], WALL_RGB),
+                     '</g>', '<g id="lines">'])
+    rgba = np.zeros((h, w, 4), np.uint8)
+    rgba[:, :, :3] = LINE_RGB
+    rgba[:, :, 3] = line[cut].astype(np.uint8) * 255
+    buffer = io.BytesIO()
+    Image.fromarray(rgba).save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    elements.extend([f'<image width="{w}" height="{h}" href="data:image/png;base64,{encoded}"/>',
+                     '</g>', '<g id="labels">',
+                     f'<svg width="{w}" height="{h}" viewBox="{cx0} {cy0} {w} {h}" overflow="hidden">',
+                     *labels, '</svg>'])
+    # PNG と同じ座標・寸法の方位記号。
+    cx, cy, r = w + 22 * S // 2, int(20 * S), int(7 * S)
+    a = math.radians(ang)
+    ux, uy = math.sin(a), -math.cos(a)
+    px, py = -uy, ux
+    tip = (cx + ux * r, cy + uy * r)
+    tail = (cx - ux * r, cy - uy * r)
+    left = (cx + px * r * 0.45 - ux * r * 0.2, cy + py * r * 0.45 - uy * r * 0.2)
+    right = (cx - px * r * 0.45 - ux * r * 0.2, cy - py * r * 0.45 - uy * r * 0.2)
+    color, stroke = svg_color(LINE_RGB), max(2, r // 14)
+    elements.extend([
+        f'<circle cx="{cx}" cy="{cy}" r="{r * 1.15}" fill="none" stroke="{color}" stroke-width="{stroke}"/>',
+        f'<polygon points="{" ".join(f"{x},{y}" for x, y in (tip, left, (cx, cy), right))}" fill="{color}"/>',
+        f'<path d="M{tail[0]},{tail[1]} L{cx},{cy}" fill="none" stroke="{color}" stroke-width="{stroke}"/>',
+        svg_text(cx + ux * r * 1.6, cy + uy * r * 1.6, "N", ImageFont.truetype(FONT_EN, int(r * 0.7))),
+        svg_text(w - 2 * S, h + S, floor, ImageFont.truetype(FONT_EN, int(16 * S)), anchor="ra"),
+        '</g>', '</svg>'])
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text("\n".join(elements) + "\n", encoding="utf-8")
+    print(f"  -> {path} {size}")
+
+
 # ---------------------------------------------------------------- 本体
-def build(pdf, pno, floor, out, debug_dir=None):
+def build(pdf, pno, floor, out, debug_dir=None, svg=None):
     rect, segs, widths, spans = read_page(pdf, pno)
     bx0, by0, bx1, by1 = building_bbox(rect, segs)
     m = 6
@@ -501,6 +590,7 @@ def build(pdf, pno, floor, out, debug_dir=None):
 
     img = Image.fromarray(canvas)
     drw = ImageDraw.Draw(img)
+    svg_labels = []
     base_fs = int(28 * S)  # 主要室名の文字高さの基準(pt)
     for r in rooms:
         if r["erase"] or not r["label"] or id(r) not in region:
@@ -531,9 +621,18 @@ def build(pdf, pno, floor, out, debug_dir=None):
             tmp = Image.new("RGBA", (tb[2] + 8, tb[3] + 8), (0, 0, 0, 0))
             ImageDraw.Draw(tmp).text((4, 4), text, font=font, fill=LINE_RGB + (255,),
                                      stroke_width=max(2, fs // 14), stroke_fill=(255, 255, 255, 255))
+            if svg:
+                # Pillow の90度回転後の貼付位置をそのまま SVG の変換行列にする。
+                tx = int(cx - tmp.height / 2)
+                ty = int(cy - tmp.width / 2) + tmp.width
+                svg_labels.append(svg_text(4, 4, text, font, anchor="la",
+                                           stroke=max(2, fs // 14),
+                                           transform=f"matrix(0 -1 1 0 {tx} {ty})"))
             tmp = tmp.rotate(90, expand=True)
             img.paste(tmp, (int(cx - tmp.width / 2), int(cy - tmp.height / 2)), tmp)
         else:
+            if svg:
+                svg_labels.append(svg_text(cx, cy, text, font, stroke=max(2, fs // 14)))
             drw.multiline_text((cx, cy), text, font=font, fill=LINE_RGB, anchor="mm", align="center", spacing=0,
                                stroke_width=max(2, fs // 14), stroke_fill=(255, 255, 255))
     small = ImageFont.truetype(FONT_EN, int(9 * S))
@@ -541,6 +640,9 @@ def build(pdf, pno, floor, out, debug_dir=None):
     for t in keep_text:
         b = t["bbox"]
         x, y = to_px((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
+        if svg:
+            svg_labels.append(svg_text(x, y, t["text"],
+                                       small if t["text"].isascii() else small_ja, stroke=S))
         drw.text((x, y), t["text"], font=small if t["text"].isascii() else small_ja, fill=LINE_RGB, anchor="mm",
                  stroke_width=S, stroke_fill=(255, 255, 255))
 
@@ -563,6 +665,9 @@ def build(pdf, pno, floor, out, debug_dir=None):
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     full.save(out)
     print(f"  -> {out} {full.size}")
+    if svg:
+        write_svg(svg, full.size, (cx0, cy0, cx1, cy1), rooms, region,
+                  wall, line, svg_labels, floor, ang)
     if debug_dir:
         dbg = np.dstack([ink] * 3)
         dbg[wall] = (0, 160, 0)
@@ -616,5 +721,6 @@ if __name__ == "__main__":
     ap.add_argument("--floor", default="2F")
     ap.add_argument("--out", required=True)
     ap.add_argument("--debug-dir")
+    ap.add_argument("--svg", help="PNG と同時に、編集用の4層 SVG を出力")
     a = ap.parse_args()
-    build(a.pdf, a.page, a.floor, a.out, a.debug_dir)
+    build(a.pdf, a.page, a.floor, a.out, a.debug_dir, a.svg)
