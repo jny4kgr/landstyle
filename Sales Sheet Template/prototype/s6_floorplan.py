@@ -66,6 +66,9 @@ KEEP_TEXT = {"UP", "DN", "冷"}  # 図面の文字のうち、そのまま残す
 FONT_EN = "/System/Library/Fonts/Supplemental/Times New Roman.ttf"
 FONT_JA = "/System/Library/Fonts/ヒラギノ明朝 ProN.ttc"
 
+MIN_ROOM_M2 = 0.2  # これより小さい閉領域は部屋とみなさない(収納の最小 455×910mm ≒ 0.41㎡ より十分小さい)
+FLOAT_MAXLEN = 12.0  # pt: 部屋の中に浮いている線の成分で、これより小さいもの(破線の1片)は消す
+FLOAT_RING = 4  # px: 浮いているかを調べる周囲の幅
 DANGLE_TOL = 0.8  # pt: 端点がこれ以内に他の線があれば「繋がっている」
 DASH_GAP = 3.0  # pt: 破線の片同士の最大の隙間
 DANGLE_MINLEN = 3.5  # pt: これより短い線(破線の1片・円弧の1片)は刈らない
@@ -119,22 +122,167 @@ def raster_segments(segs, shape, origin, scale, thick=1):
     return img
 
 
-def building_bbox(rect, segs):
-    """黒線を低解像度で描いて膨張 → 図枠を除いた最大の連結成分を建物とみなす"""
+def _component_bbox(rect, segs, anchors):
+    """線を低解像度で描いて膨張し、図枠以外の連結成分から建物らしいものを選ぶ。
+    室名(anchors)を最も多く囲む成分 → 同数なら面積最大。囲む室名の数も返す。"""
     sc = 2
     img = raster_segments(segs, (int(rect.height * sc), int(rect.width * sc)), (0, 0), sc, thick=1)
     img = cv2.dilate(img, np.ones((7, 7), np.uint8))
     n, lab, st, _ = cv2.connectedComponentsWithStats((img > 0).astype(np.uint8))
-    best = None
+    best, best_key = None, None
     page_area = img.shape[0] * img.shape[1]
     for i in range(1, n):
         x, y, w, h, a = st[i]
         if w * h > 0.5 * page_area:  # 図枠
             continue
-        if best is None or a > st[best][4]:
-            best = i
+        cnt = sum(x <= ax * sc <= x + w and y <= ay * sc <= y + h for ax, ay in anchors)
+        key = (cnt, a)
+        if best is None or key > best_key:
+            best, best_key = i, key
+    if best is None:
+        return None, 0
     x, y, w, h, _ = st[best]
-    return x / sc, y / sc, (x + w) / sc, (y + h) / sc
+    return (x / sc, y / sc, (x + w) / sc, (y + h) / sc), best_key[0]
+
+
+def building_bbox(rect, segs, widths=None, anchors=()):
+    """建物の範囲を推定する。
+    1. 全ての黒線の連結成分のうち、室名を最も多く囲むもの(図枠は除く)
+    2. 1 が室名の過半を囲めない場合(通り芯・敷地境界線・引出線で建物が図枠と繋がっている図面)は、
+       最も細い線幅の線(通り芯・寸法線・引出線・ハッチ)を除いた太い線だけで同じ選び方をする"""
+    anchors = list(anchors)
+    bbox, cnt = _component_bbox(rect, segs, anchors)
+    need = (len(anchors) + 1) // 2
+    if not anchors or cnt >= need or widths is None:
+        return bbox
+    classes = np.unique(np.round(widths, 2))
+    if len(classes) >= 2:
+        thick = np.round(widths, 2) > classes[0]
+        bbox2, cnt2 = _component_bbox(rect, segs[thick], anchors)
+        if bbox2 is not None and cnt2 > cnt:
+            grown = grow_bbox(rect, segs, bbox2, anchors)
+            print(f"  building bbox: thin lines excluded ({cnt} -> {cnt2}/{len(anchors)} room names), "
+                  f"core {[round(v) for v in bbox2]} -> grown {[round(v) for v in grown]}")
+            return grown
+    return bbox
+
+
+GROW_MM = 800  # 太線だけで求めた建物範囲を、細線(バルコニーの手すりなど)で広げてよい最大距離
+EDGE_MM = 400  # 室名がこの距離より範囲の辺に近い(または外にある)側だけ広げる
+
+
+def grow_bbox(rect, segs, core, anchors=()):
+    """太線だけで求めた範囲(core)を、細線を含む全ての線で広げる。
+    バルコニーの手すりが細線で描かれている図面では、太線の範囲の辺にバルコニーの室名が接してしまう。
+    室名が辺から EDGE_MM 以内(または外)にある側だけ、core を GROW_MM 広げた枠に収まる線
+    (枠をまたぐ実線・破線は除く)のうち core に掛かる連結成分の外接矩形まで広げる。"""
+    e, edge = GROW_MM / PT_MM, EDGE_MM / PT_MM
+    sides = [any(ax < core[0] + edge for ax, _ in anchors), any(ay < core[1] + edge for _, ay in anchors),
+             any(ax > core[2] - edge for ax, _ in anchors), any(ay > core[3] - edge for _, ay in anchors)]
+    if not any(sides):
+        return core
+    box = (core[0] - e, core[1] - e, core[2] + e, core[3] + e)
+    inb = ((segs[:, [0, 2]] >= box[0]).all(1) & (segs[:, [0, 2]] <= box[2]).all(1)
+           & (segs[:, [1, 3]] >= box[1]).all(1) & (segs[:, [1, 3]] <= box[3]).all(1))
+    s = segs[inb & ~dashed_crossing(segs, box)]
+    if not len(s):
+        return core
+    sc = 2
+    img = raster_segments(s, (int(rect.height * sc), int(rect.width * sc)), (0, 0), sc, thick=1)
+    img = cv2.dilate(img, np.ones((3, 3), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats((img > 0).astype(np.uint8))
+    g = list(core)
+    for i in range(1, n):
+        x, y, w, h, _ = st[i]
+        if x / sc > core[2] or (x + w) / sc < core[0] or y / sc > core[3] or (y + h) / sc < core[1]:
+            continue
+        g = [min(g[0], x / sc), min(g[1], y / sc), max(g[2], (x + w) / sc), max(g[3], (y + h) / sc)]
+    return tuple(g[k] if sides[k] else core[k] for k in range(4))
+
+
+def dashed_crossing(segs, bbox, min_pieces=4, gap_min=0.3, gap_max=2.5, span=0.7):
+    """建物範囲をまたぐ破線・一点鎖線(通り芯など)の片を返す(bool マスク)。
+    同じ直線上で gap_max 以内に続く片(接触も含む)を1本の鎖にまとめ、
+    gap_min〜gap_max の「破線の隙間」が min_pieces 以上ある鎖のうち、範囲の内外にまたがるもの、
+    または範囲の幅(高さ)の span 倍以上に伸びるもの(通り芯の丸記号の手前で途切れて範囲内に収まる場合)を対象にする。
+    鎖の途中に重なる別の線(壁線など)は鎖に入れない(消さない)。
+    範囲をまたぐ実線は build() の範囲判定で消えるが、破線は1片ずつ範囲に収まってしまうため。"""
+    x0, y0, x1, y1 = bbox
+    dx, dy = segs[:, 2] - segs[:, 0], segs[:, 3] - segs[:, 1]
+    L = np.hypot(dx, dy)
+    ok = L > 1e-6
+    th = np.mod(np.arctan2(dy, dx), np.pi)
+    th = np.where(np.abs(th - np.pi) < 0.004, 0.0, th)
+    nx, ny = -np.sin(th), np.cos(th)
+    rho = nx * segs[:, 0] + ny * segs[:, 1]
+    ux, uy = np.cos(th), np.sin(th)
+    t1 = ux * segs[:, 0] + uy * segs[:, 1]
+    t2 = ux * segs[:, 2] + uy * segs[:, 3]
+    ta, tb = np.minimum(t1, t2), np.maximum(t1, t2)
+    inside = ((segs[:, [0, 2]] >= x0).all(1) & (segs[:, [0, 2]] <= x1).all(1)
+              & (segs[:, [1, 3]] >= y0).all(1) & (segs[:, [1, 3]] <= y1).all(1))
+    drop = np.zeros(len(segs), bool)
+    groups: dict[tuple[int, int], list[int]] = {}
+    for i in np.where(ok)[0]:
+        groups.setdefault((int(round(th[i] / 0.004)), int(round(rho[i] / 0.3))), []).append(i)
+    for idx in groups.values():
+        if len(idx) < min_pieces:
+            continue
+        idx = sorted(idx, key=lambda i: ta[i])
+        chains = []
+        chain, end, gaps = [idx[0]], tb[idx[0]], 0
+        for i in idx[1:]:
+            gap = ta[i] - end
+            if gap < -gap_min:  # 鎖に重なる別の線(壁線など)は鎖に入れず読み飛ばす
+                continue
+            if gap <= gap_max:
+                chain.append(i)
+                gaps += gap > gap_min
+            else:
+                chains.append((chain, gaps))
+                chain, gaps = [i], 0
+            end = tb[i]
+        chains.append((chain, gaps))
+        for c, g in chains:
+            if g < min_pieces:
+                continue
+            xs, ys = segs[c][:, [0, 2]], segs[c][:, [1, 3]]
+            long_ = (xs.max() - xs.min() >= span * (x1 - x0)) or (ys.max() - ys.min() >= span * (y1 - y0))
+            if long_ or (inside[c].any() and not inside[c].all()):
+                drop[c] = True
+    return drop
+
+
+def hatch_lines(segs, min_len=12.0, min_rows=6, regular=0.6):
+    """斜めのハッチ(床断熱範囲・勾配天井・下屋の斜線)を返す(bool マスク)。
+    縦横以外の同じ角度の長い線が、ほぼ等間隔に min_rows 列以上並ぶものをハッチとみなす。
+    同じ列(同じ直線上)の短い片も合わせて消す。"""
+    dx, dy = segs[:, 2] - segs[:, 0], segs[:, 3] - segs[:, 1]
+    L = np.hypot(dx, dy)
+    th = np.mod(np.degrees(np.arctan2(dy, dx)), 180.0)
+    off_axis = np.minimum(np.minimum(th, 180 - th), np.abs(th - 90)) > 2
+    thr = np.radians(th)
+    rho = -np.sin(thr) * segs[:, 0] + np.cos(thr) * segs[:, 1]
+    drop = np.zeros(len(segs), bool)
+    long_ = off_axis & (L >= min_len)
+    for a in np.unique(np.round(th[long_])):
+        grp = long_ & (np.abs(th - a) <= 1.0)
+        rows = []  # 列(rho)を 2.5pt でまとめる
+        for r in np.sort(rho[grp]):
+            if not rows or r - rows[-1][-1] > 2.5:
+                rows.append([r])
+            else:
+                rows[-1].append(r)
+        if len(rows) < min_rows:
+            continue
+        centers = np.array([np.mean(r) for r in rows])
+        d = np.diff(centers)
+        step = np.median(d)
+        if step < 3 or np.mean(np.abs(d - step) <= 0.25 * step) < regular:
+            continue
+        near = np.abs(rho[:, None] - centers[None, :]).min(axis=1) <= 1.5
+        drop |= off_axis & (np.abs(th - a) <= 1.0) & near
+    return drop
 
 
 def point_seg_dist(px, py, segs):
@@ -341,14 +489,21 @@ def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang):
 # ---------------------------------------------------------------- 本体
 def build(pdf, pno, floor, out, debug_dir=None, svg=None):
     rect, segs, widths, spans = read_page(pdf, pno)
-    bx0, by0, bx1, by1 = building_bbox(rect, segs)
+    names, _ = parse_rooms(spans, (rect.x0, rect.y0, rect.x1, rect.y1))
+    anchors = [((r["bbox"][0] + r["bbox"][2]) / 2, (r["bbox"][1] + r["bbox"][3]) / 2) for r in names]
+    bx0, by0, bx1, by1 = building_bbox(rect, segs, widths, anchors)
     m = 6
     bx0, by0, bx1, by1 = bx0 - m, by0 - m, bx1 + m, by1 + m
 
     # 建物範囲に収まる線だけ残す(範囲をまたぐ線 = 寸法補助線・引出線は捨てる)
     inb = ((segs[:, [0, 2]] >= bx0).all(1) & (segs[:, [0, 2]] <= bx1).all(1)
            & (segs[:, [1, 3]] >= by0).all(1) & (segs[:, [1, 3]] <= by1).all(1))
-    segs = segs[inb]
+    dashed = dashed_crossing(segs, (bx0, by0, bx1, by1))
+    print(f"  dashed lines crossing the bbox (grid lines): {int((dashed & inb).sum())} pieces")
+    segs = segs[inb & ~dashed]
+    hatch = hatch_lines(segs)
+    print(f"  hatch lines removed: {int(hatch.sum())}")
+    segs = segs[~hatch]
     segs = remove_dimensions(segs, spans)
     keep = prune_dangling(segs)
     segs_k = segs[keep]
@@ -431,27 +586,44 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
         # 室名の中心だけでなく周囲も種にする(文字が便器・浴槽などの図形の中に掛かっている場合)
         cand_seeds = [to_px(cxp + dx, cyp + dy) for dx, dy in
                       ((0, 0), (0, -1.3 * min(tw, th)), (0, 1.3 * min(tw, th)), (-1.3 * min(tw, th), 0), (1.3 * min(tw, th), 0))]
-        chosen = None
-        for k in (0, 3, 5, 7, 9, 13, 17):  # 壁を k px 太らせて隙間を塞ぐ
-            bar, lab_k = labels_for(k)
-            valid = []
-            for sx, sy in cand_seeds:
-                if not (0 <= sx < W and 0 <= sy < H) or bar[sy, sx]:
-                    continue
-                msk = lab_k == lab_k[sy, sx]
-                area = msk.sum()
-                touches_border = msk[0].any() or msk[-1].any() or msk[:, 0].any() or msk[:, -1].any()
-                leak_other = any(msk[y, x] for x, y in others if 0 <= y < H and 0 <= x < W)
-                too_big = exp is not None and area > exp * 1.25
-                if not (touches_border or leak_other or too_big):
-                    valid.append((area, msk))
-            if valid:
-                area, msk = max(valid, key=lambda v: v[0])
-                if k:  # 太らせた分を戻す(元の線の内側まで広げる)
-                    grown = cv2.dilate(msk.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k + 2, k + 2)))
-                    msk = (grown > 0) & (base_barrier == 0)
-                chosen = (k, msk)
-                break
+        def search(cand_seeds):
+            """壁を k px 太らせながら、種から塗った閉領域のうち漏れていない最大のものを探す"""
+            chosen = fallback = None
+            for k in (0, 3, 5, 7, 9, 13, 17):  # 壁を k px 太らせて隙間を塞ぐ
+                bar, lab_k = labels_for(k)
+                valid = []
+                for sx, sy in cand_seeds:
+                    if not (0 <= sx < W and 0 <= sy < H) or bar[sy, sx]:
+                        continue
+                    msk = lab_k == lab_k[sy, sx]
+                    area = msk.sum()
+                    touches_border = msk[0].any() or msk[-1].any() or msk[:, 0].any() or msk[:, -1].any()
+                    leak_other = any(msk[y, x] for x, y in others if 0 <= y < H and 0 <= x < W)
+                    too_big = exp is not None and area > exp * 1.25
+                    if not (touches_border or leak_other or too_big):
+                        valid.append((area, msk))
+                if valid:
+                    area, msk = max(valid, key=lambda v: v[0])
+                    if k:  # 太らせた分を戻す(元の線の内側まで広げる)
+                        grown = cv2.dilate(msk.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k + 2, k + 2)))
+                        msk = (grown > 0) & (base_barrier == 0)
+                    if msk.sum() < MIN_ROOM_M2 * px_per_m2:
+                        # 部屋として小さすぎる = 室名が便器・浴槽などの図形の中に掛かっている。
+                        # 部屋そのものは扉の隙間で漏れているので、壁を太らせて探し続ける
+                        fallback = fallback or (k, msk)
+                        continue
+                    chosen = (k, msk)
+                    break
+            return chosen, fallback
+
+        chosen, fallback = search(cand_seeds)
+        if chosen is None and fallback is not None:
+            # 小さな領域しか取れない(文字が大きな図形の中にある)ときは、さらに離れた8方向を種にする
+            h_ = min(tw, th)
+            far = [to_px(cxp + f * h_ * ux, cyp + f * h_ * uy) for f in (2.5, 4.0)
+                   for ux, uy in ((0, -1), (0, 1), (-1, 0), (1, 0), (-.7, -.7), (.7, -.7), (-.7, .7), (.7, .7))]
+            chosen = search(far)[0]
+        chosen = chosen or fallback
         if chosen is None:
             print(f"  ! {r['cad']}: 閉じた領域を作れず(漏れ)")
             continue
@@ -579,6 +751,65 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
     ink[inwall] = 0
     ext = fill_from(ink, (1, 1))
 
+    # 部屋の中に浮いている破線の図形(家具・天井範囲・エアコン位置などの想定線)を消す。
+    # 破線の1片程度の大きさの線の成分を、破線の隙間程度の距離でまとめて1つの図形とし、
+    # 図形の全ての片が「周囲がほぼ1つの部屋の塗り領域だけ」で、図形が他の線から離れているときだけ図形ごと消す
+    # (一部だけ欠けた図形を残さない)
+    label_region = {k: v.copy() for k, v in region.items()}  # 室名の配置はこの処理の前の領域で決める
+    n, lab, st, _ = cv2.connectedComponentsWithStats((ink > 0).astype(np.uint8), connectivity=8)
+    ring_k = np.ones((2 * FLOAT_RING + 1, 2 * FLOAT_RING + 1), np.uint8)
+    room_id = np.zeros((H, W), np.int32)
+    room_list = [r for r in rooms if id(r) in region and not r["erase"]]
+    for j, r in enumerate(room_list, 1):
+        room_id[region[id(r)]] = j
+    small = np.zeros(n, bool)
+    small[1:] = np.maximum(st[1:, 2], st[1:, 3]) <= FLOAT_MAXLEN * S
+    float_room = np.zeros(n, np.int32)  # 0 = 浮いていない
+    for i in np.where(small)[0]:
+        x, y, w, h, a = st[i]
+        x0_, y0_ = max(0, x - FLOAT_RING - 1), max(0, y - FLOAT_RING - 1)
+        x1_, y1_ = min(W, x + w + FLOAT_RING + 1), min(H, y + h + FLOAT_RING + 1)
+        comp = lab[y0_:y1_, x0_:x1_] == i
+        ring = (cv2.dilate(comp.astype(np.uint8), ring_k) > 0) & ~comp
+        ids = room_id[y0_:y1_, x0_:x1_][ring]
+        if len(ids):
+            j = np.bincount(ids).argmax()
+            if j and (ids == j).mean() >= 0.97:
+                float_room[i] = j
+    gk = int(DASH_GAP * S) * 2 + 1
+    groups = cv2.connectedComponents((cv2.dilate(np.isin(lab, np.where(small)[0]).astype(np.uint8),
+                                                 np.ones((gk, gk), np.uint8)) > 0).astype(np.uint8))[1]
+    members: dict[int, list[int]] = {}
+    for i in np.where(small)[0]:
+        x, y, w, h, a = st[i]
+        yy, xx = np.nonzero(lab[y:y + h, x:x + w] == i)
+        members.setdefault(int(groups[y + yy[0], x + xx[0]]), []).append(int(i))
+    n_float = 0
+    for g, idx in members.items():
+        js = {int(float_room[i]) for i in idx}
+        if 0 in js or len(js) != 1:
+            continue
+        # 図形が他の線(壁・棚板・設備)に破線の隙間程度まで近づいていれば、その線の一部とみなして残す
+        xs_ = [st[i][0] for i in idx]; ys_ = [st[i][1] for i in idx]
+        xe_ = [st[i][0] + st[i][2] for i in idx]; ye_ = [st[i][1] + st[i][3] for i in idx]
+        x0_, y0_ = max(0, min(xs_) - gk), max(0, min(ys_) - gk)
+        x1_, y1_ = min(W, max(xe_) + gk), min(H, max(ye_) + gk)
+        sub = lab[y0_:y1_, x0_:x1_]
+        mine = np.isin(sub, idx)
+        near = cv2.dilate(mine.astype(np.uint8), np.ones((gk, gk), np.uint8)) > 0
+        if ((sub > 0) & ~mine & near).any():
+            continue
+        j = js.pop()
+        for i in idx:
+            x, y, w, h, a = st[i]
+            comp = lab[y:y + h, x:x + w] == i
+            ink[y:y + h, x:x + w][comp] = 0
+            x0_, y0_ = max(0, x - 1), max(0, y - 1)
+            grown = cv2.dilate((lab[y0_:y + h + 1, x0_:x + w + 1] == i).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+            region[id(room_list[j - 1])][y0_:y + h + 1, x0_:x + w + 1] |= grown
+        n_float += 1
+    print(f"  floating dashed figures removed: {n_float}")
+
     # ---------------------------------------------------------------- 描画
     canvas = np.full((H, W, 3), 255, np.uint8)
     for r in rooms:
@@ -596,7 +827,7 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
         if r["erase"] or not r["label"] or id(r) not in region:
             continue
         text = r["label"].format(j=f"{r['jo']:.1f}J" if r["jo"] else "").strip()
-        msk = region[id(r)]
+        msk = label_region[id(r)]
         ys, xs = np.nonzero(msk)
         rw, rh = xs.max() - xs.min(), ys.max() - ys.min()
         vertical = rh > rw * 2.2 and "\n" not in text
