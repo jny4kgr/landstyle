@@ -21,10 +21,12 @@ from __future__ import annotations
 import argparse
 import base64
 import io
+import json
 from html import escape
 import math
 import re
 import unicodedata
+import sys
 from pathlib import Path
 
 import cv2
@@ -439,7 +441,8 @@ def svg_text(x, y, text, font, anchor="mm", stroke=0, transform=""):
     return "\n".join(result)
 
 
-def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang):
+def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang,
+              offset=(0, 0), annotations=()):
     cx0, cy0, cx1, cy1 = crop
     w, h = cx1 - cx0, cy1 - cy0
     cut = np.s_[cy0:cy1, cx0:cx1]
@@ -448,7 +451,7 @@ def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang):
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size[0]}" height="{size[1]}" '
         f'viewBox="0 0 {size[0]} {size[1]}">',
         '<rect width="100%" height="100%" fill="white"/>',
-        '<g id="rooms">']
+        f'<g transform="translate({offset[0]} {offset[1]})">', '<g id="rooms">']
     for room in rooms:
         if id(room) in region and not room["erase"]:
             elements.append(svg_mask(region[id(room)][cut], COLORS[room["ckey"]], room["cad"]))
@@ -480,14 +483,231 @@ def write_svg(path, size, crop, rooms, region, wall, line, labels, floor, ang):
         f'<path d="M{tail[0]},{tail[1]} L{cx},{cy}" fill="none" stroke="{color}" stroke-width="{stroke}"/>',
         svg_text(cx + ux * r * 1.6, cy + uy * r * 1.6, "N", ImageFont.truetype(FONT_EN, int(r * 0.7))),
         svg_text(w - 2 * S, h + S, floor, ImageFont.truetype(FONT_EN, int(16 * S)), anchor="ra"),
-        '</g>', '</svg>'])
+        '</g>', '</g>'])
+    if annotations:
+        elements.extend(['<g id="annotations">', *annotations, '</g>'])
+    elements.append('</svg>')
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(elements) + "\n", encoding="utf-8")
     print(f"  -> {path} {size}")
 
 
 # ---------------------------------------------------------------- 本体
-def build(pdf, pno, floor, out, debug_dir=None, svg=None):
+def _room_masks(rooms, region, crop):
+    """注釈用に、同名の部屋領域を出力画像座標の外接矩形へまとめる。"""
+    cx0, cy0, cx1, cy1 = crop
+    found = {}
+    for room in rooms:
+        if id(room) not in region:
+            continue
+        ys, xs = np.nonzero(region[id(room)])
+        if not len(xs):
+            continue
+        box = (int(xs.min() - cx0), int(ys.min() - cy0), int(xs.max() - cx0), int(ys.max() - cy0))
+        found.setdefault(room["cad"], []).append((box, region[id(room)][cy0:cy1, cx0:cx1]))
+    return found
+
+
+def _annotation_plan(path, room_masks, building_size):
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    valid, sides = [], {"left": 0, "right": 0, "top": 0, "bottom": 0}
+    for item in data.get("items", []):
+        typ = item.get("type")
+        room = item.get("room")
+        if room and room not in room_masks:
+            print(f"warning: annotation room not found: {room}", file=sys.stderr)
+            continue
+        if typ == "comment":
+            side = item.get("side", "bottom")
+            if side not in sides:
+                print(f"warning: invalid annotation side: {side}", file=sys.stderr); continue
+            sides[side] = max(sides[side], 150 * S)
+        elif typ == "car" and item.get("outside"):
+            side = item["outside"]
+            if side not in sides:
+                print(f"warning: invalid annotation side: {side}", file=sys.stderr); continue
+            # 車の短辺に少し余白を足す。
+            sides[side] = max(sides[side], int(2200 * S / PT_MM))
+        elif typ not in ("car", "comment"):
+            print(f"warning: invalid annotation type: {typ}", file=sys.stderr); continue
+        valid.append(item)
+    return valid, sides
+
+
+def _draw_car(draw, center, size, vertical=True):
+    """上から見た車を PIL で描き、同じ形の SVG 要素を返す。"""
+    long_, short = size
+    w, h = (short, long_) if vertical else (long_, short)
+    x0, y0 = center[0] - w / 2, center[1] - h / 2
+    x1, y1 = center[0] + w / 2, center[1] + h / 2
+    sw, rad = max(2, int(1.5 * S)), int(min(w, h) * .18)
+    draw.rounded_rectangle((x0, y0, x1, y1), radius=rad, fill="white", outline=LINE_RGB, width=sw)
+    if vertical:
+        glass = [(x0+w*.18, y0+h*.20, x1-w*.18, y0+h*.38), (x0+w*.18, y0+h*.64, x1-w*.18, y0+h*.82)]
+        mirrors = [(x0-w*.10,y0+h*.32,x0,y0+h*.43),(x1,y0+h*.32,x1+w*.10,y0+h*.43)]
+    else:
+        glass = [(x0+w*.20, y0+h*.18, x0+w*.38, y1-h*.18), (x0+w*.64, y0+h*.18, x0+w*.82, y1-h*.18)]
+        mirrors = [(x0+w*.32,y0-h*.10,x0+w*.43,y0),(x0+w*.32,y1,x0+w*.43,y1+h*.10)]
+    for b in glass: draw.rounded_rectangle(b, radius=max(2, rad//3), fill=(235,240,242), outline=LINE_RGB, width=sw)
+    for b in mirrors: draw.ellipse(b, fill="white", outline=LINE_RGB, width=sw)
+    color = svg_color(LINE_RGB)
+    svg = [f'<rect x="{x0:.1f}" y="{y0:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{rad}" fill="white" stroke="{color}" stroke-width="{sw}"/>']
+    for b in glass:
+        svg.append(f'<rect x="{b[0]:.1f}" y="{b[1]:.1f}" width="{b[2]-b[0]:.1f}" height="{b[3]-b[1]:.1f}" rx="{max(2,rad//3)}" fill="#ebf0f2" stroke="{color}" stroke-width="{sw}"/>')
+    for b in mirrors:
+        svg.append(f'<ellipse cx="{(b[0]+b[2])/2:.1f}" cy="{(b[1]+b[3])/2:.1f}" rx="{(b[2]-b[0])/2:.1f}" ry="{(b[3]-b[1])/2:.1f}" fill="white" stroke="{color}" stroke-width="{sw}"/>')
+    return "\n".join(svg)
+
+
+def _comment_origin(mask, box, at, side, avoid):
+    """全マスク画素から、文字と side 方向の直線が干渉しない最寄り点を選ぶ。"""
+    ys, xs = np.nonzero(mask)
+    if not len(xs):
+        return None
+    x0, y0, x1, y1 = box
+    target = (xs.mean(), ys.mean()) if at is None else (
+        x0 + (x1-x0)*float(at[0]), y0 + (y1-y0)*float(at[1]))
+    good = np.ones(len(xs), bool)
+    # 黒丸の半径も含めて避ける。avoid 自体は文字外接矩形 + 8px。
+    for left, top, right, bottom in avoid:
+        left, top, right, bottom = left-3, top-3, right+3, bottom+3
+        if side == "bottom":
+            hit = (xs >= left) & (xs <= right) & (ys <= bottom)
+        elif side == "top":
+            hit = (xs >= left) & (xs <= right) & (ys >= top)
+        elif side == "left":
+            hit = (ys >= top) & (ys <= bottom) & (xs >= left)
+        else:
+            hit = (ys >= top) & (ys <= bottom) & (xs <= right)
+        good &= ~hit
+    if not good.any():
+        return None
+    xs, ys = xs[good], ys[good]
+    index = np.argmin((xs-target[0])**2 + (ys-target[1])**2)
+    return float(xs[index]), float(ys[index])
+
+
+def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, building_box):
+    masks = _room_masks(rooms, region, crop)
+    items, _ = _annotation_plan(annot_path, masks, base.size)
+    left, top, right, bottom = building_box
+    font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", 11*S)
+    measure = ImageDraw.Draw(base)
+    avoid = [(a-8, b-8, c+8, d+8) for a,b,c,d in label_boxes]
+    cars, comments = [], []
+    bounds = [0., 0., float(base.width), float(base.height)]
+
+    def include(box):
+        bounds[0] = min(bounds[0], box[0]-24)
+        bounds[1] = min(bounds[1], box[1]-24)
+        bounds[2] = max(bounds[2], box[2]+24)
+        bounds[3] = max(bounds[3], box[3]+24)
+
+    for item in items:
+        room = item.get("room")
+        if room:
+            box, mask = max(masks[room], key=lambda v: int(v[1].sum()))
+            x0, y0, x1, y1 = box
+        if item["type"] == "car":
+            length, width = int(4700*S/PT_MM), int(1800*S/PT_MM)
+            if room:
+                rw, rh = max(1, x1-x0), max(1, y1-y0)
+                vertical = rh >= rw
+                scale = min(1., (rh if vertical else rw)*.86/length,
+                            (rw if vertical else rh)*.86/width)
+                length, width = int(length*scale), int(width*scale)
+                center = ((x0+x1)/2, (y0+y1)/2)
+            else:
+                side = item["outside"]
+                vertical = side in ("left", "right")
+                gap = 500*S/PT_MM
+                # ミラーの外端から建物外接矩形までを実寸500mmにする。
+                centers = {
+                    "left": (left-gap-width*.6, (top+bottom)/2),
+                    "right": (right+gap+width*.6, (top+bottom)/2),
+                    "top": ((left+right)/2, top-gap-width*.6),
+                    "bottom": ((left+right)/2, bottom+gap+width*.6)}
+                center = centers[side]
+            half_w, half_h = (width*.6, length/2) if vertical else (length/2, width*.6)
+            include((center[0]-half_w, center[1]-half_h, center[0]+half_w, center[1]+half_h))
+            cars.append((center, (length, width), vertical))
+            continue
+        side = item.get("side", "bottom")
+        origin = _comment_origin(mask, box, item.get("at"), side, avoid)
+        if origin is None:
+            print(f"warning: no clear annotation leader for room: {room}", file=sys.stderr)
+            continue
+        lines = item.get("text", "").split("\n")[:2]
+        # 各行の実際のインク外接矩形を基準にPNG/SVG共通の座標を作る。
+        metrics = [measure.textbbox((0, 0), line, font=font, anchor="ls") for line in lines]
+        width = max(b[2]-b[0] for b in metrics)
+        step = font.size + S
+        height = max(i*step+b[3]-b[1] for i,b in enumerate(metrics))
+        px, py = origin
+        if side == "bottom":
+            tx, ty = px-width/2, bottom+60
+        elif side == "top":
+            tx, ty = px-width/2, top-60-height
+        elif side == "left":
+            tx, ty = left-60-width, py-height/2
+        else:
+            tx, ty = right+60, py-height/2
+        comments.append(dict(side=side, origin=origin, lines=lines, metrics=metrics,
+                             width=width, height=height, tx=tx, ty=ty, step=step))
+
+    # 同じ辺は起点順に配置。衝突時だけ文字を接線方向にずらす。
+    for side in ("left", "right", "top", "bottom"):
+        horizontal = side in ("top", "bottom")
+        coordinate, extent = ("tx", "width") if horizontal else ("ty", "height")
+        previous = -math.inf
+        for comment in sorted((c for c in comments if c["side"] == side),
+                              key=lambda c: c[coordinate]):
+            comment[coordinate] = max(comment[coordinate], previous+24)
+            previous = comment[coordinate]+comment[extent]
+            include((comment["tx"], comment["ty"],
+                     comment["tx"]+comment["width"], comment["ty"]+comment["height"]))
+
+    ox, oy = -math.floor(bounds[0]), -math.floor(bounds[1])
+    result = Image.new("RGB", (math.ceil(bounds[2])+ox, math.ceil(bounds[3])+oy), "white")
+    result.paste(base, (ox, oy))
+    draw = ImageDraw.Draw(result)
+    elements = []
+    color, sw = svg_color(LINE_RGB), max(2, S)
+    for center, size, vertical in cars:
+        body = _draw_car(draw, (center[0]+ox, center[1]+oy), size, vertical)
+        elements.append(f'<g data-annot="car">{body}</g>')
+    for c in comments:
+        px, py = c["origin"]
+        tx, ty, width, height = c["tx"], c["ty"], c["width"], c["height"]
+        side = c["side"]
+        if side == "bottom":
+            end, target = (px, bottom+36), (tx+width/2, ty-8)
+        elif side == "top":
+            end, target = (px, top-36), (tx+width/2, ty+height+8)
+        elif side == "left":
+            end, target = (left-36, py), (tx+width+8, ty+height/2)
+        else:
+            end, target = (right+36, py), (tx-8, ty+height/2)
+        horizontal = side in ("top", "bottom")
+        shifted = abs((target[0]-px) if horizontal else (target[1]-py)) > .01
+        points = [(px, py), end, (target[0], end[1]), target] if shifted else [(px, py), target]
+        points = [(x+ox, y+oy) for x,y in points]
+        draw.line(points, fill=LINE_RGB, width=sw)
+        dr = 2.5 * S  # 黒丸の半径（完成版の見た目に合わせ、解像度 S に比例させる）
+        draw.ellipse((px+ox-dr, py+oy-dr, px+ox+dr, py+oy+dr), fill=LINE_RGB)
+        svg = [f'<circle cx="{px+ox}" cy="{py+oy}" r="{dr}" fill="{color}"/>']
+        for a,b in zip(points, points[1:]):
+            svg.append(f'<line x1="{a[0]}" y1="{a[1]}" x2="{b[0]}" y2="{b[1]}" stroke="{color}" stroke-width="{sw}"/>')
+        for i,(line, metric) in enumerate(zip(c["lines"], c["metrics"])):
+            x = tx+(width-(metric[2]-metric[0]))/2-metric[0]+ox
+            y = ty+i*c["step"]-metric[1]+oy
+            draw.text((x,y), line, font=font, fill=LINE_RGB, anchor="ls")
+            svg.append(f'<text x="{x}" y="{y}" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, sans-serif" font-size="{font.size}" fill="{color}">{escape(line)}</text>')
+        elements.append('<g data-annot="comment">'+"".join(svg)+'</g>')
+    return result, (ox, oy), elements
+
+
+def build(pdf, pno, floor, out, debug_dir=None, svg=None, annot=None):
     rect, segs, widths, spans = read_page(pdf, pno)
     names, _ = parse_rooms(spans, (rect.x0, rect.y0, rect.x1, rect.y1))
     anchors = [((r["bbox"][0] + r["bbox"][2]) / 2, (r["bbox"][1] + r["bbox"][3]) / 2) for r in names]
@@ -822,6 +1042,7 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
     img = Image.fromarray(canvas)
     drw = ImageDraw.Draw(img)
     svg_labels = []
+    label_boxes = []
     base_fs = int(28 * S)  # 主要室名の文字高さの基準(pt)
     for r in rooms:
         if r["erase"] or not r["label"] or id(r) not in region:
@@ -861,7 +1082,15 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
                                            transform=f"matrix(0 -1 1 0 {tx} {ty})"))
             tmp = tmp.rotate(90, expand=True)
             img.paste(tmp, (int(cx - tmp.width / 2), int(cy - tmp.height / 2)), tmp)
+            if annot:
+                a, b, c, d = tmp.getbbox()
+                label_boxes.append((int(cx-tmp.width/2)+a, int(cy-tmp.height/2)+b,
+                                    int(cx-tmp.width/2)+c, int(cy-tmp.height/2)+d))
         else:
+            if annot:
+                label_boxes.append(drw.multiline_textbbox(
+                    (cx, cy), text, font=font, anchor="mm", align="center", spacing=0,
+                    stroke_width=max(2, fs//14)))
             if svg:
                 svg_labels.append(svg_text(cx, cy, text, font, stroke=max(2, fs // 14)))
             drw.multiline_text((cx, cy), text, font=font, fill=LINE_RGB, anchor="mm", align="center", spacing=0,
@@ -874,6 +1103,10 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
         if svg:
             svg_labels.append(svg_text(x, y, t["text"],
                                        small if t["text"].isascii() else small_ja, stroke=S))
+        if annot:
+            label_boxes.append(drw.textbbox((x, y), t["text"],
+                               font=small if t["text"].isascii() else small_ja,
+                               anchor="mm", stroke_width=S))
         drw.text((x, y), t["text"], font=small if t["text"].isascii() else small_ja, fill=LINE_RGB, anchor="mm",
                  stroke_width=S, stroke_fill=(255, 255, 255))
 
@@ -894,11 +1127,27 @@ def build(pdf, pno, floor, out, debug_dir=None, svg=None):
     d2.text((img.width - 2 * S, img.height + 1 * S), floor, font=ImageFont.truetype(FONT_EN, int(16 * S)),
             fill=LINE_RGB, anchor="ra")
     Path(out).parent.mkdir(parents=True, exist_ok=True)
+    svg_offset, svg_annotations = (0, 0), []
+    if annot:
+        label_boxes = [(a-cx0, b-cy0, c-cx0, d-cy0) for a,b,c,d in label_boxes]
+        label_boxes.append(d2.textbbox((img.width-2*S, img.height+S), floor,
+                           font=ImageFont.truetype(FONT_EN, 16*S), anchor="ra"))
+        # 方位記号の N も labels 層の文字として避ける。
+        radius = 7*S
+        angle = math.radians(ang)
+        nx = img.width+margin//2+math.sin(angle)*radius*1.6
+        ny = 20*S-math.cos(angle)*radius*1.6
+        label_boxes.append(d2.textbbox((nx, ny), "N",
+                           font=ImageFont.truetype(FONT_EN, int(radius*.7)), anchor="mm"))
+        building_box = (float(nz[1].min()-cx0), float(nz[0].min()-cy0),
+                        float(nz[1].max()-cx0), float(nz[0].max()-cy0))
+        full, svg_offset, svg_annotations = draw_annotations(
+            full, annot, rooms, region, (cx0,cy0,cx1,cy1), label_boxes, building_box)
     full.save(out)
     print(f"  -> {out} {full.size}")
     if svg:
         write_svg(svg, full.size, (cx0, cy0, cx1, cy1), rooms, region,
-                  wall, line, svg_labels, floor, ang)
+                  wall, line, svg_labels, floor, ang, svg_offset, svg_annotations)
     if debug_dir:
         dbg = np.dstack([ink] * 3)
         dbg[wall] = (0, 160, 0)
@@ -953,5 +1202,6 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--debug-dir")
     ap.add_argument("--svg", help="PNG と同時に、編集用の4層 SVG を出力")
+    ap.add_argument("--annot", help="車・引出しコメントを指定する JSON")
     a = ap.parse_args()
-    build(a.pdf, a.page, a.floor, a.out, a.debug_dir, a.svg)
+    build(a.pdf, a.page, a.floor, a.out, a.debug_dir, a.svg, a.annot)
