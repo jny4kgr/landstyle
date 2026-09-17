@@ -7,6 +7,9 @@ import base64
 import html
 import json
 import mimetypes
+import re
+import unicodedata
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import subprocess
 import tempfile
@@ -19,6 +22,60 @@ CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 def esc(value):
     return html.escape(str(value), quote=True)
+
+def readable_annotations(payload, width_mm, height_mm):
+    """Keep annotation text at >=6pt in the specified object-fit image cell.
+
+    Only the embedded copy is changed. Reflow small comments into independent
+    columns below the drawing, extending the viewBox to include every line.
+    Drawing/car geometry remains untouched; comment leader ends follow the text.
+    """
+    root=ET.fromstring(payload)
+    view=[float(v) for v in root.get('viewBox', '').replace(',', ' ').split()]
+    if len(view)!=4 or view[2]<=0 or view[3]<=0:
+        return payload
+    layer=next((e for e in root.iter() if e.get('id')=='annotations'),None)
+    if layer is None:
+        return payload
+    ns='{http://www.w3.org/2000/svg}'
+    groups=[g for g in layer.iter(ns+'g') if g.findall(ns+'text')]
+    if not groups:
+        return payload
+    texts=[t for g in groups for t in g.findall(ns+'text')]
+    def font(t):
+        return float(t.get('font-size', '44'))
+    width_px=width_mm*96/25.4
+    height_px=height_mm*96/25.4
+    original_scale=min(width_px/view[2], height_px/view[3])
+    if min(font(t) for t in texts)*original_scale>=8:  # 8 CSS px = 6pt
+        return payload
+    # The source annotation layer has one text element per comment line.
+    # Reserve printed-space line height first, then solve the drawing scale.
+    top=min(float(t.get('y','0'))-font(t) for t in texts)
+    drawing_height=max(1, top-view[1])
+    rows=max(len(g.findall(ns+'text')) for g in groups)
+    reserve_px=8*(rows*1.25+0.75)
+    scale=min(width_px/view[2], max(1,height_px-reserve_px)/drawing_height)
+    size=8/scale
+    bottom=top+reserve_px/scale
+    root.set('viewBox', ' '.join(map(str,[view[0],view[1],view[2],bottom-view[1]])))
+    root.set('height',str(bottom-view[1]))
+    for index,g in enumerate(groups):
+        center=view[0]+view[2]*(index+0.5)/len(groups)
+        for line_index,t in enumerate(g.findall(ns+'text')):
+            t.set('x',str(center))
+            t.set('y',str(top+size*(1+line_index*1.25)))
+            t.set('font-size',str(size))
+            t.set('text-anchor','middle')
+            # Inline styles must not override the corrected presentation attribute.
+            style=re.sub(r'(?:^|;)\s*font-size\s*:[^;]*', '', t.get('style',''))
+            t.set('style',style+';font-size:'+str(size)+'px')
+        for line in g.findall(ns+'line'):
+            line.set('x2',str(center))
+            line.set('y2',str(top))
+    root.set('data-annotation-min-pt','6')
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    return ET.tostring(root,encoding='utf-8')
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -46,7 +103,7 @@ def main():
     def amount(v): return f'{number(v):,f}'.rstrip('0').rstrip('.') if number(v) is not None and '.' in f'{number(v):,f}' else (f'{number(v):,f}' if number(v) is not None else missing('価格'))
     def area(v): return esc(v)+'㎡('+tsubo(v)+'坪)' if number(v) is not None and number(v)>0 else missing('面積')
     def walk(v): return f'徒歩{minutes(v)}分(約{esc(v)}m)' if number(v) is not None and number(v)>0 else missing('距離未入力')
-    def asset(path,label,p):
+    def asset(path,label,p,frame_mm=None):
         if not path: return '<div class="placeholder">'+esc(label)+' 未設定</div>'
         f=Path(path).expanduser()
         if not f.is_absolute(): f=args.data.resolve().parent/f
@@ -57,7 +114,10 @@ def main():
         if mime not in {'image/svg+xml','image/png','image/jpeg','image/webp','image/gif'}:
             issue('ASSET',p,'未対応の画像形式です。','PNG・JPEG・SVG等の画像に変更していただけますか？')
             return missing(label)
-        uri='data:'+mime+';base64,'+base64.b64encode(f.read_bytes()).decode('ascii')
+        payload=f.read_bytes()
+        if mime=='image/svg+xml' and frame_mm:
+            payload=readable_annotations(payload,*frame_mm)
+        uri='data:'+mime+';base64,'+base64.b64encode(payload).decode('ascii')
         return f'<img src="{uri}" alt="{esc(label)}">'
     buildings=d.get('buildings',[]); lands=d.get('lands',[])
     active_b=[(i,b) for i,b in enumerate(buildings) if b.get('status')!='済']
@@ -66,37 +126,52 @@ def main():
     if lands: total+=f'・建築条件付売地／全{len(lands)}区画'
     sale=f'今回販売 {sum(b.get("status")=="販売中" for b in buildings)}棟'
     if lands: sale+=f'・{sum(b.get("status")=="販売中" for b in lands)}区画'
-    sidebar='<div class="brand"><div class="series">'+esc(d.get('series','Lancasa'))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><h2>Access</h2>'
+    area_units=sum(1 if unicodedata.east_asian_width(ch) in 'WF' else 0.6 for ch in str(d.get('area','')))
+    area_font=max(12,min(27,64*72/25.4/max(1,area_units)))
+    facility_count=max(1,len(d.get('facilities',[])))
+    life_font=max(6,6.5-max(0,facility_count-11)*0.1)
+    life_height=max(32,min(92,6+facility_count*6))
+    sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+esc(d.get('series','Lancasa'))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations">'
     for i,a in enumerate(d.get('access',[])):
         sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+walk(a.get('distance_m'))+'</strong></div>'
-    sidebar+='<div class="map">'+asset(d.get('map_path'),'地図','map_path')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><h3>Life Information</h3><ul class="life">'
+    sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
     for a in d.get('facilities',[]): sidebar+='<li><span>'+esc(a.get('name',''))+'</span><i></i><span>'+walk(a.get('distance_m'))+'</span></li>'
-    sidebar+='</ul>'
+    sidebar+='</ul></section>'
     catch=d.get('catch',[])
     if isinstance(catch,str): catch=[catch]
     highlighted=[]
-    import re
     words=[w for w in d.get('highlight',[]) if w]
     for line in catch:
         parts=re.split('('+'|'.join(re.escape(w) for w in sorted(words,key=len,reverse=True))+')',line) if words else [line]
         highlighted.append(''.join('<em>'+esc(p)+'</em>' if p in words else esc(p) for p in parts))
-    title='<div class="catch '+('missing' if any(x['path']=='catch' and x['level']=='error' for x in items) else '')+'">'+'<br>'.join(highlighted)+'</div>'
+    title='<div class="catch '+('missing' if any(x['path']=='catch' and x['level']=='error' for x in items) else '')+'">'+'<br>'.join(highlighted)+'</div><div class="subcopy">'+value(d.get('subcopy',''),'サブコピー','subcopy')+'</div>'
     hero=d.get('hero') or {}
     hero_html=asset(hero.get('path'),'外観パース','hero.path')+'<figcaption>'+value(hero.get('caption'),'画像の種類','hero.caption')+'</figcaption>' if hero else asset(None,'外観パース','hero.path')
     division='<div class="division"><h3>Division'+(' 建築条件付売地' if lands else '')+'</h3>'+asset(d.get('division_path'),'区画図','division_path')+'<div class="statuses">'
     for b in buildings+lands: division+='<span class="sold">済</span>' if b.get('status')=='済' else '<span>'+esc(b.get('name') or '号棟未入力')+' '+esc(b.get('status',''))+'</span>'
     division+='</div></div>'
-    def plans(obj,p):
-        fs=obj.get('floorplans',[])
+    def plans(obj,p,frame_mm=(80,39),selection=None):
+        fs=list(enumerate(obj.get('floorplans',[])))
+        if selection is not None:
+            fs=fs[selection]
         if not fs: return '<div class="floorplans">'+asset(None,'間取り図',p)+'</div>'
-        return '<div class="floorplans">'+''.join('<figure>'+asset(f.get('path'),f.get('label','間取り図'),p+f'.floorplans.{j}.path')+'<figcaption>'+esc(f.get('label',''))+'</figcaption></figure>' for j,f in enumerate(fs))+'</div>'
+        # Figures stack in this cell, with 2mm gaps and a 3mm caption each.
+        frame=(frame_mm[0],(frame_mm[1]+3-2*(len(fs)-1))/len(fs)-3)
+        return '<div class="floorplans">'+''.join('<figure>'+asset(f.get('path'),f.get('label','間取り図'),p+f'.floorplans.{j}.path',frame)+'<figcaption>'+esc(f.get('label',''))+'</figcaption></figure>' for j,f in fs)+'</div>'
+    mixed=bool(lands or len(active_b)>1)
     cards=''
     for i,b in active_b:
         p=f'buildings.{i}'
-        cards+='<article class="building"><div class="price-panel"><h2>◀ Room Plan ▶</h2><div>'+field(b,'name','号棟',p)+'</div><div class="subcopy">'+value(d.get('subcopy',''),'サブコピー','subcopy')+'</div><div class="price"><small>販売価格</small><b>'+amount(b.get('price'))+'</b><span>〈税込〉<br>万円</span></div><strong class="layout">'+field(b,'layout','間取り',p)+'</strong><p>土地面積／'+area(b.get('land_area'))+'<br>建物面積／'+area(b.get('building_area'))
+        cards+='<article class="building"><div class="price-panel"><h2>◀ Room Plan ▶</h2><div class="unit-name">'+field(b,'name','号棟',p)+'</div><div class="price"><small>販売価格</small><b>'+amount(b.get('price'))+'</b><span>〈税込〉<br>万円</span></div><strong class="layout">'+field(b,'layout','間取り',p)+'</strong><p>土地面積／'+area(b.get('land_area'))+'<br>建物面積／'+area(b.get('building_area'))
         if b.get('has_garage'): cards+='<br>'+value(f'※車庫部分{b.get("garage_area", "未入力")}㎡含む' if b.get('garage_included') else None,'車庫面積・算入',p+'.garage_area')
-        cards+='<br>建築確認番号／'+field(b,'confirmation','建築確認番号',p)+'</p><div class="features">'+''.join('<span>'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[:3])+'</div>'
-        cards+='</div>'+plans(b,p)+'<div class="comments">'+''.join('<span>'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[3:])+''.join('<span>'+value(t,'コメント',p+'.comments')+'</span>' for t in b.get('comments',[]))+'</div></article>'
+        cards+='<br>建築確認番号／'+field(b,'confirmation','建築確認番号',p)+'</p><div class="features">'+''.join('<span class="feature-badge">'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[:3])+'</div>'
+        cards+='</div><div class="plan-one">'+plans(b,p,(75,45) if mixed else (80,39),None if mixed else slice(0,1))+'</div>'
+        if not mixed:
+            cards+='<div class="plan-rest">'+plans(b,p,(131,109),slice(1,None))+'</div>'
+        cards+='<div class="plan-extras">'+''.join('<span class="feature-badge">'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[3:])
+        if b.get('comments'):
+            cards+='<div class="comments">'+''.join('<span>'+value(t,'コメント',p+'.comments')+'</span>' for t in b['comments'])+'</div>'
+        cards+='</div></article>'
     if active_l:
         cards+='<section class="land-cards">'
         for i,b in active_l:
@@ -165,7 +240,7 @@ def main():
     if args.stage=='rough' and any(x['level']=='error' for x in items):
         review='<div class="review">ラフ・要確認：'+' ／ '.join(esc(x['id']+' '+x['message']) for x in items if x['level']=='error')+'</div>'
     template=(ROOT/'templates/naka.html.j2').read_text(encoding='utf-8')
-    replacements={'css':(ROOT/'templates/naka.css').read_text(encoding='utf-8'),'sidebar':sidebar,'title':title,'hero':hero_html,'division':division,'cards':cards,'overview':overview,'equipment':equipment,'footer':footer,'review':review,'mode':'mixed' if lands or len(active_b)>1 else 'single'}
+    replacements={'css':(ROOT/'templates/naka.css').read_text(encoding='utf-8'),'sidebar':sidebar,'sidebar_style':f'--life-height:{life_height}mm;--life-count:{facility_count};--life-font:{life_font}pt','title':title,'hero':hero_html,'division':division,'cards':cards,'overview':overview,'equipment':equipment,'footer':footer,'review':review,'mode':'mixed' if lands or len(active_b)>1 else 'single'}
     for key,v in replacements.items(): template=template.replace('{{ '+key+' }}',v)
     (args.out/'naka.html').write_text(template,encoding='utf-8')
     if args.no_pdf:

@@ -1,3 +1,20 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><title>販売図面 中面</title><style>{{ css }}</style></head>
-<body><main class="sheet {{ mode }}"><aside>{{ sidebar }}</aside><section class="main"><header>{{ title }}</header><section class="visual"><figure class="hero">{{ hero }}</figure>{{ division }}<div class="cards">{{ cards }}</div></section><section class="overview">{{ overview }}</section><section class="equipment">{{ equipment }}</section>{{ review }}</section><footer>{{ footer }}</footer></main></body></html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>販売図面 中面</title><style>{{ css }}</style></head>
+<body>
+<main class="sheet {{ mode }}">
+  <aside style="{{ sidebar_style }}">{{ sidebar }}</aside>
+  <section class="main">
+    <section class="visual">
+      <section class="media-column"><figure class="hero">{{ hero }}</figure>{{ division }}</section>
+      <header>{{ title }}</header>
+      <section class="cards">{{ cards }}</section>
+    </section>
+    <section class="overview">{{ overview }}</section>
+    <section class="equipment">{{ equipment }}</section>
+    <section class="review-cell">{{ review }}</section>
+  </section>
+  <footer>{{ footer }}</footer>
+</main>
+</body>
+</html>

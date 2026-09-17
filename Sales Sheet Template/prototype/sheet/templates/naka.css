@@ -1,4 +1,127 @@
-@page{size:364mm 257mm;margin:0}*{box-sizing:border-box}html,body{margin:0;color:#231f20;background:#fff;font-family:'Hiragino Mincho ProN','YuMincho',serif}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet{width:364mm;height:257mm;padding:6mm;display:grid;grid-template-columns:77mm 1fr;grid-template-rows:222mm 23mm;border:0;gap:0}aside{background:#231f20;color:white;padding:5mm 3mm 2mm;min-height:0}.brand{text-align:center;border:double 1mm #fff;padding:3mm 1mm;line-height:1.5}.series{font-size:23pt;letter-spacing:2pt}.brand h1{font-size:27pt;letter-spacing:2pt;margin:0}.brand small{font-size:6.7pt}.counts{text-align:center;font-size:9pt;margin:2mm 0}h2,h3,p,figure{margin:0}aside h2{font-size:17pt;font-weight:400;border-bottom:1px solid #fff}.station{padding:1.4mm 0;border-bottom:1px solid #aaa}.station small{font-size:8pt}.station b{font-size:21pt}.station strong{font-size:14pt;display:block}.map{height:58mm;background:white;color:#231f20;margin-top:3mm}.navigation{font-size:6pt;margin:1mm 0}aside h3{background:#fff;color:#231f20;font-size:10pt;padding:.4mm 1mm;letter-spacing:1px}.life{list-style:none;padding:0;margin:1mm 0;font-size:6.3pt;line-height:1.7}.life li{display:flex;align-items:baseline}.life i{flex:1;border-bottom:1px dotted white;min-width:1mm}.life span:last-child{white-space:nowrap;font-size:6pt}.main{min-width:0;padding-left:2mm;display:grid;grid-template-rows:24mm 123mm 43mm 26mm 6mm;gap:0}header{display:flex;align-items:center}.catch{font-weight:700;font-size:16pt;line-height:1.45;letter-spacing:-.5pt}.catch em{font-style:normal;color:#d7141a;font-size:23pt}.visual{display:grid;grid-template-columns:58mm 51mm 1fr;gap:2mm;min-height:0}.hero{height:88mm;align-self:start}.hero img{width:100%;height:82mm;object-fit:contain}.hero figcaption{font-size:6pt}.division{height:64mm;border:1px solid #aaa;margin-top:6mm}.division h3{background:#231f20;color:#fff;font-size:9pt;padding:1mm}.division .placeholder{height:42mm}.statuses{display:flex;justify-content:space-around;align-items:center;font-size:7pt}.sold{border-radius:50%;background:#d7141a;color:#fff;font-size:20pt;padding:1mm 3mm}.cards{display:contents}.building{display:contents}.price-panel{grid-column:3;grid-row:1;padding:0 1mm;align-self:start}.price-panel h2{text-align:center;font-size:20pt;letter-spacing:1pt;border-bottom:1px solid}.subcopy{color:#d7141a;text-align:center;font-size:11pt;margin:1mm 0}.price{display:flex;align-items:center;justify-content:center;gap:1mm}.price small{font-size:9pt;max-width:9mm}.price b{font-size:37pt;font-weight:500;line-height:1.2;white-space:nowrap}.price span{font-size:10pt}.layout{font-size:13pt;display:block}.price-panel p{font-size:7.2pt;line-height:1.5}.features{display:flex;gap:1.5mm;margin-top:2mm}.features span{flex:1;background:#231f20;color:#fff;border:3px double #fff;outline:1px solid #231f20;border-radius:1mm;padding:1.5mm;font-size:8pt;text-align:center}.floorplans{display:flex;gap:2mm;min-width:0;min-height:0}.building>.floorplans{grid-column:1/4;grid-row:1;align-self:end;height:61mm;padding-top:1mm;background:#fff}.floorplans figure{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}.floorplans img{width:100%;height:calc(100% - 4mm);object-fit:contain}.floorplans figcaption{text-align:right;font-size:9pt;height:4mm}.comments{display:flex;gap:2mm;grid-column:1/4;font-size:7pt}.comments span{flex:1}.overview{font-size:6.5pt;line-height:1.45;align-self:start}.overview h3{font-size:10pt;font-weight:400;background:#231f20;color:#fff;padding:.5mm 2mm;margin-bottom:1mm}.overview p{margin:0}.overview b{font-size:7pt}.notes{font-size:5.9pt;line-height:1.4;margin-top:1mm}.equipment{display:grid;grid-template-columns:45mm 72mm 1fr;gap:2mm;background:#231f20;padding:1.5mm 0}.equipment>div{background:white;padding:2mm}.equipment .standard{background:#777;color:white;text-align:center;font-size:12pt}.standard strong{font-weight:400;font-size:14pt}.warranties{font-family:'Hiragino Kaku Gothic ProN',sans-serif;display:flex;gap:3mm;align-items:center;font-size:9pt;font-weight:bold}.warranties>div{flex:1}.badges{display:flex;flex-wrap:wrap;gap:1mm;align-content:center}.badges span{background:#231f20;color:white;border-radius:1mm;padding:1mm;font:6.3pt 'Hiragino Kaku Gothic ProN',sans-serif;flex:1 0 20%}.review{font-size:5.5pt;color:#d7141a;line-height:1.2;padding:.6mm}.missing{display:inline-block;color:#d7141a;border:1px dashed #d7141a;background:#fff8f8;padding:0 .7mm;font:8pt 'Hiragino Kaku Gothic ProN',sans-serif;overflow-wrap:anywhere}.placeholder{display:flex;align-items:center;justify-content:center;border:1px dashed #b0b0b0;background:#fafafa;color:#777;height:100%;width:100%;font:10pt sans-serif}.map img,.division img{width:100%;height:calc(100% - 8mm);object-fit:contain}footer{grid-column:1/3;border:1px solid #231f20;padding:1.5mm 2mm;font-family:'Hiragino Kaku Gothic ProN',sans-serif}.licenses{font-size:6pt;text-align:center;white-space:nowrap}.company-row{display:flex;align-items:center;justify-content:space-between;gap:2mm;height:16mm}.company-name{display:flex;flex-direction:column}.company-name b{font-size:21pt;white-space:nowrap}.company-name small{font-size:6pt}.web{text-align:center}.web b,.fax b{display:block;background:#231f20;color:white;border-radius:1mm;padding:1mm;font-size:7pt}.web strong{font-size:12pt}.contact strong{font-size:25pt;display:block;white-space:nowrap}.contact small{font-size:6pt;display:block}.fax{font-size:10pt;font-weight:bold}.fax small{font-size:6pt}.transaction{text-align:center;border:1px solid #231f20;font-size:7pt}.transaction b{font-size:13pt}.transaction small{display:block;font-size:5.5pt}.mixed .main{grid-template-rows:20mm 116mm 55mm 25mm 6mm}.mixed .visual{grid-template-columns:47mm 1fr;gap:2mm}.mixed .hero{height:56mm}.mixed .hero img{height:50mm}.mixed .division{grid-column:1;grid-row:1;align-self:end;height:48mm;margin:0}.mixed .division .placeholder{height:27mm}.mixed .cards{grid-column:2;grid-row:1;display:grid;grid-template-rows:51mm 63mm;gap:2mm}.mixed .building{display:flex;gap:2mm}.mixed .price-panel{width:58%;padding:0}.mixed .price-panel h2{font-size:15pt}.mixed .price b{font-size:27pt}.mixed .layout{font-size:10pt}.mixed .features span{font-size:6pt;padding:1mm}.mixed .building>.floorplans{width:42%;height:100%;background:none}.mixed .land-cards{display:flex;gap:2mm}.land-cards article{border:1px solid #777;padding:1.5mm;flex:1;min-width:0;font-size:8pt}.land-cards h3{font-size:9pt;border-bottom:1px solid #777}.land-cards p{font-size:8pt;line-height:1.4}.land-cards .floorplans{height:18mm;margin-top:1mm}.mixed .catch{font-size:15pt}.mixed .catch em{font-size:20pt}.mixed .notes{font-size:5.8pt}.mixed .overview{font-size:6.2pt}.mixed .subcopy{font-size:8pt}
-.single .hero{height:60mm}.single .hero img{height:56mm}.single .division{height:54mm;margin-top:1mm}.single .division .placeholder{height:35mm}
-/* Explicit rows keep plan captions and feature comments clear of the overview. */
-.single .visual{grid-template-rows:114mm 7mm}.single .building>.floorplans{height:49mm}.single .comments{grid-row:2;align-self:center}.mixed .cards{display:flex;flex-direction:column}.mixed .building{height:50mm;min-height:0;position:relative}.mixed .land-cards{flex:1;min-height:0}.mixed .comments{position:absolute;bottom:0;left:0;font-size:5.5pt}.overview,.price-panel,aside,footer,.equipment{min-width:0;overflow-wrap:anywhere}.mixed .building .floorplans{padding-bottom:3mm}.life li{line-height:1.6}.licenses{white-space:normal}.main>*,.visual>*{min-width:0;min-height:0}
+@page { size: 364mm 257mm; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: white; color: #231f20; font-family: 'Hiragino Mincho ProN', 'YuMincho', serif; }
+body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+h1, h2, h3, p, figure { margin: 0; }
+/* Every grid child owns a clipping boundary; intrinsic image/text sizes cannot
+   enlarge a track or paint over the next section. No absolute positioning. */
+.sheet { width: 364mm; height: 257mm; padding: 6mm; display: grid; grid-template-columns: 77mm minmax(0, 1fr); grid-template-rows: 222mm 23mm; overflow: hidden; }
+.sheet *, .sheet > * { min-width: 0; min-height: 0; }
+aside, .main, .visual, .media-column, header, .cards, .building, .price-panel,
+.hero, .division, .map, .access, .life-section, .floorplans, .floorplans figure,
+.plan-one, .plan-rest, .plan-extras, .overview, .equipment, .equipment > div,
+.review-cell, footer, .land-cards, .land-cards article, .company-row > div {
+  overflow: hidden;
+}
+img { display: block; width: 100%; height: 100%; object-fit: contain; }
+aside { background: #231f20; color: white; padding: 3mm; display: grid; gap: 1mm;
+  grid-template-rows: 41mm 10mm 40mm minmax(12mm, 1fr) 7mm var(--life-height, 56mm); }
+.brand { text-align: center; border: double 1mm white; padding: 1mm; line-height: 1.3; overflow: hidden; }
+.series { font-size: 22pt; letter-spacing: 2pt; }
+.brand h1 { font-size: var(--area-font, 25pt); letter-spacing: 0; white-space: nowrap; line-height: 1.4; }
+.brand small { display: block; font-size: 6.5pt; }
+.counts { text-align: center; font-size: 8pt; line-height: 1.35; }
+.access { display: grid; grid-template-rows: 7mm minmax(0, 1fr); }
+aside h2 { font-size: 16pt; font-weight: normal; border-bottom: 1px solid white; }
+.stations { display: grid; grid-auto-rows: minmax(0, 1fr); overflow: hidden; }
+.station { border-bottom: 1px solid #aaa; line-height: 1.1; overflow: hidden; }
+.station small { font-size: 7pt; }
+.station b { font-size: 18pt; }
+.station strong { display: block; font-size: 10pt; }
+.map { background: white; color: #231f20; }
+.navigation { font-size: 6pt; line-height: 1.3; overflow: hidden; }
+.life-section { display: grid; grid-template-rows: 6mm minmax(0, 1fr); }
+aside h3 { background: white; color: #231f20; font-size: 10pt; padding: .4mm 1mm; }
+.life { list-style: none; padding: 0; margin: 0; display: grid;
+  grid-template-rows: repeat(var(--life-count, 11), minmax(0, 1fr)); font-size: var(--life-font, 6.3pt); line-height: 1.2; }
+.life li { display: grid; grid-template-columns: minmax(0, 1fr) 2mm max-content; align-items: center; overflow: hidden; }
+.life li > span:first-child { overflow-wrap: anywhere; }
+.life i { border-bottom: 1px dotted white; }
+.life li > span:last-child { white-space: nowrap; font-size: 6pt; }
+.main { padding-left: 2mm; display: grid; gap: 1mm; grid-template-rows: 148mm 40mm 25mm 6mm; }
+.visual { display: grid; grid-template-columns: 58mm minmax(0, 1fr); grid-template-rows: 24mm minmax(0, 1fr); gap: 2mm; }
+.media-column { grid-column: 1; grid-row: 1 / 3; display: grid; gap: 2mm; grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr); }
+.hero { display: grid; grid-template-rows: minmax(0, 1fr) 4mm; }
+.hero figcaption { font-size: 6pt; }
+.division { border: 1px solid #aaa; display: grid; grid-template-rows: 7mm minmax(0, 1fr) 12mm; }
+.division h3 { background: #231f20; color: white; font-size: 8pt; padding: 1mm; }
+.statuses { display: flex; justify-content: space-around; align-items: center; gap: 1mm; font-size: 7pt; overflow: hidden; }
+.sold { border-radius: 50%; background: #d7141a; color: white; font-size: 19pt; padding: 0 2mm; }
+header { grid-column: 2; grid-row: 1; display: grid; grid-template-rows: minmax(0, 1fr) 5mm; }
+.catch { font-weight: bold; font-size: 14pt; line-height: 1.4; overflow-wrap: anywhere; overflow: hidden; }
+.catch em { color: #d7141a; font-style: normal; font-size: 19pt; }
+.subcopy { text-align: center; color: #d7141a; font-size: 10pt; }
+.cards { grid-column: 2; grid-row: 2; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 2mm; }
+/* Single property: central price / 1F, with a wide 2F+3F column at right.
+   Widths/heights are also used for SVG annotation scaling in build_sheet.py. */
+.single .building { display: grid; grid-template-columns: 80mm minmax(0, 1fr); grid-template-rows: 68mm 42mm 8mm; gap: 2mm; }
+.price-panel { grid-column: 1; grid-row: 1; display: grid; grid-template-rows: 8mm 4mm 16mm 5mm 12mm minmax(0, 1fr); }
+.price-panel > * { overflow: hidden; }
+.price-panel h2 { text-align: center; font-size: 18pt; font-weight: normal; border-bottom: 1px solid; }
+.unit-name { font-size: 8pt; }
+.price { display: flex; align-items: center; justify-content: center; gap: 1mm; }
+.price small { font-size: 8pt; max-width: 9mm; }
+.price b { font-size: 34pt; font-weight: normal; line-height: 1; white-space: nowrap; }
+.price > span { font-size: 9pt; }
+.layout { font-size: 10pt; line-height: 1.3; }
+.price-panel p { font-size: 6.5pt; line-height: 1.2; }
+.features { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: .7mm; padding: .5mm 3mm; overflow: hidden; }
+.feature-badge { display: flex; align-items: center; justify-content: center; background: #231f20; color: white; border: .3mm solid #b9b9b9; border-radius: 1mm; padding: .5mm 1mm; font: 8pt/1.15 'Hiragino Kaku Gothic ProN', sans-serif; text-align: center; overflow: hidden; }
+.plan-one { grid-column: 1; grid-row: 2; }
+.plan-rest { grid-column: 2; grid-row: 1 / 3; }
+.floorplans { display: grid; height: 100%; gap: 2mm; grid-auto-rows: minmax(0, 1fr); }
+.floorplans figure { display: grid; grid-template-rows: minmax(0, 1fr) 3mm; }
+.floorplans figcaption { text-align: right; font-size: 8pt; line-height: 1; }
+.plan-extras { grid-column: 1 / 3; grid-row: 3; display: flex; align-items: stretch; gap: 2mm; }
+.plan-extras .feature-badge { flex: 1; }
+.comments { flex: 1; font-size: 6pt; overflow: hidden; }
+.overview { font-size: 6.5pt; line-height: 1.35; overflow-wrap: anywhere; }
+.overview h3 { font-size: 10pt; font-weight: normal; background: #231f20; color: white; padding: .5mm 2mm; margin-bottom: .6mm; }
+.overview b { font-size: 6.5pt; }
+.notes { font-size: 6pt; line-height: 1.25; margin-top: .5mm; }
+.equipment { display: grid; grid-template-columns: 42mm 70mm minmax(0, 1fr); gap: 2mm; background: #231f20; padding: 1mm 0; }
+.equipment > div { background: white; padding: 1.5mm; }
+.equipment .standard { background: #777; color: white; text-align: center; font-size: 11pt; }
+.standard strong { font-size: 13pt; font-weight: normal; }
+.warranties { font-family: 'Hiragino Kaku Gothic ProN', sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm; align-items: center; font-size: 8pt; font-weight: bold; }
+.badges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: .7mm; }
+.badges span { background: #231f20; color: white; border-radius: 1mm; padding: .7mm; font: 6pt/1.15 'Hiragino Kaku Gothic ProN', sans-serif; overflow: hidden; }
+.review { font-size: 6pt; color: #d7141a; line-height: 1.2; }
+.missing { display: inline-block; max-width: 100%; color: #d7141a; border: 1px dashed #d7141a; background: #fff8f8; padding: 0 .5mm; font: 7pt/1.2 'Hiragino Kaku Gothic ProN', sans-serif; overflow-wrap: anywhere; }
+.placeholder { display: flex; align-items: center; justify-content: center; border: 1px dashed #b0b0b0; background: #fafafa; color: #777; width: 100%; height: 100%; font: 9pt sans-serif; overflow: hidden; }
+footer { grid-column: 1 / 3; border: 1px solid #231f20; padding: 1mm 2mm; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; display: grid; grid-template-rows: 4mm minmax(0, 1fr); }
+.licenses { font-size: 6pt; text-align: center; overflow: hidden; }
+.company-row { display: grid; grid-template-columns: 96mm 54mm 100mm 65mm minmax(0, 1fr); gap: 2mm; align-items: center; }
+.company-name { display: flex; flex-direction: column; }
+.company-name b { font-size: 18pt; white-space: nowrap; }
+.company-name small { font-size: 6pt; }
+.web { text-align: center; }
+.web b, .fax b { display: block; background: #231f20; color: white; border-radius: 1mm; padding: .7mm; font-size: 7pt; }
+.web strong { font-size: 10pt; }
+.contact strong { font-size: 24pt; display: block; white-space: nowrap; }
+.contact small { font-size: 6pt; display: block; }
+.fax { font-size: 10pt; font-weight: bold; }
+.fax small { font-size: 6pt; }
+.transaction { text-align: center; border: 1px solid #231f20; font-size: 7pt; }
+.transaction b { font-size: 12pt; }
+.transaction small { display: block; font-size: 5.5pt; }
+/* Mixed sheets: separate bounded rows for new housing and land parcels. */
+.mixed .main { grid-template-rows: 136mm 54mm 23mm 6mm; }
+.mixed .cards { grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); }
+.mixed .building { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 6mm; gap: 1mm; }
+.mixed .price-panel { grid-column: 1; grid-row: 1; grid-template-columns: minmax(0, 1fr) 40mm; grid-template-rows: 7mm 4mm 14mm 5mm minmax(0, 1fr); column-gap: 1mm; }
+.mixed .price-panel > * { grid-column: 1; }
+.mixed .price-panel h2 { font-size: 15pt; }
+.mixed .price-panel .features { grid-column: 2; grid-row: 1 / 6; align-self: center; height: 29mm; padding: 0; gap: 1mm; }
+.mixed .price b { font-size: 26pt; }
+.mixed .layout { font-size: 8pt; }
+.mixed .feature-badge { font-size: 7pt; }
+.mixed .plan-one { grid-column: 2; grid-row: 1; }
+.mixed .plan-extras { grid-column: 1 / 3; grid-row: 2; }
+.land-cards { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2mm; }
+.land-cards article { border: 1px solid #777; padding: 1mm; display: flex; flex-direction: column; }
+.land-cards h3 { font-size: 8pt; border-bottom: 1px solid #777; flex-shrink: 0; }
+.land-cards p { font-size: 6.5pt; line-height: 1.25; flex-shrink: 0; }
+.land-cards .floorplans { flex: 1; margin-top: 1mm; }
+.mixed .overview { font-size: 6.2pt; }
+.mixed .notes { font-size: 6pt; }
