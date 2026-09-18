@@ -4,13 +4,23 @@
   "area": "みどり町1丁目",
   "roman": "FICTIONAL MIDORICHO",
   "catch": [
-    "光と風を感じる、家族の住まい。",
+    {
+      "text": "光と風を感じる、家族の住まい。",
+      "basis": [
+        "common.address"
+      ]
+    },
     "新築住宅と建築条件付売地。"
   ],
   "highlight": [
     "家族の住まい"
   ],
-  "subcopy": "〜家族と過ごす新しい毎日〜",
+  "subcopy": {
+    "text": "家族と過ごす新しい毎日",
+    "basis": [
+      "buildings[0].layout"
+    ]
+  },
   "common": {
     "address": "架空県架空市みどり町1丁目1付近",
     "lot_address": "架空市みどり町一丁目100番1ほか",
@@ -96,9 +106,19 @@
       "handover": "相談",
       "handover_month": "2026年12月以降・相談",
       "features": [
-        "全居室収納付",
+        {
+          "text": "全居室収納付",
+          "basis": [
+            "buildings[0].rooms"
+          ]
+        },
         "オープンキッチン",
-        "2バルコニー"
+        {
+          "text": "2バルコニー",
+          "basis": [
+            "buildings[0].layout"
+          ]
+        }
       ],
       "rooms": [
         {
@@ -179,5 +199,64 @@
         "floorplans": []
       }
     }
-  ]
+  ],
+  "copy_candidates": {
+    "catch": [
+      [
+        {
+          "text": "徒歩9分、暮らしが広がる街。",
+          "basis": [
+            "access[0]"
+          ]
+        },
+        {
+          "text": "家族で育てる新しい住まい。",
+          "basis": [
+            "buildings[0].layout"
+          ]
+        }
+      ],
+      [
+        {
+          "text": "南側6m公道に面した住まい。",
+          "basis": [
+            "common.roads[0].width_m"
+          ]
+        }
+      ]
+    ],
+    "subcopy": [
+      {
+        "text": "家族と過ごす新しい毎日",
+        "basis": [
+          "buildings[0].layout"
+        ]
+      }
+    ],
+    "features": [
+      {
+        "text": "LDK16帖",
+        "basis": [
+          "buildings[0].rooms"
+        ]
+      },
+      {
+        "text": "2バルコニー",
+        "basis": [
+          "buildings[0].layout"
+        ]
+      }
+    ],
+    "comments": [
+      {
+        "building": "1号棟",
+        "room": "LDK",
+        "text": "16帖の家族空間",
+        "side": "bottom",
+        "basis": [
+          "buildings[0].rooms"
+        ]
+      }
+    ]
+  }
 }

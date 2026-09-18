@@ -60,7 +60,7 @@ header { grid-column: 2; grid-row: 1; display: grid; grid-template-rows: minmax(
 .price-panel h2 { text-align: center; font-size: 18pt; font-weight: normal; border-bottom: 1px solid; }
 .unit-name { font-size: 8pt; }
 .price { display: flex; align-items: center; justify-content: center; gap: 1mm; }
-.price small { font-size: 8pt; max-width: 9mm; }
+.price small { font-size: 8pt; white-space: nowrap; }
 .price b { font-size: 34pt; font-weight: normal; line-height: 1; white-space: nowrap; }
 .price > span { font-size: 9pt; }
 .layout { font-size: 10pt; line-height: 1.3; }
@@ -74,7 +74,7 @@ header { grid-column: 2; grid-row: 1; display: grid; grid-template-rows: minmax(
 .floorplans figcaption { text-align: right; font-size: 8pt; line-height: 1; }
 .plan-extras { grid-column: 1 / 3; grid-row: 3; display: flex; align-items: stretch; gap: 2mm; }
 .plan-extras .feature-badge { flex: 1; }
-.comments { flex: 1; font-size: 6pt; overflow: hidden; }
+.comments { flex: 1; font-size: 7pt; overflow: hidden; }
 .overview { font-size: 6.5pt; line-height: 1.35; overflow-wrap: anywhere; }
 .overview h3 { font-size: 10pt; font-weight: normal; background: #231f20; color: white; padding: .5mm 2mm; margin-bottom: .6mm; }
 .overview b { font-size: 6.5pt; }

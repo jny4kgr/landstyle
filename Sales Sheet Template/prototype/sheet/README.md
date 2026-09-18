@@ -84,7 +84,7 @@ python3 build_sheet.py --data /path/to/property.json --out /private/tmp/sheet-ro
 その他の入力:
 
 - `series / city / area / roman`: 左上のシリーズ・市名・エリア・ローマ字。
-- `catch`: 文字列または行ごとの文字列配列。`highlight[]` の語だけ赤く大きく表示。`subcopy`: 赤い副文。
+- `catch`: 行ごとの配列。各行、`subcopy`、`buildings[].features[]`、`buildings[].comments[]` は、従来の文字列に加えて `{"text":"LDK16帖","basis":["buildings[0].rooms"]}` の形を使える。AI が書く文章には、事実の参照先を JSON のドット記法で `basis` に付ける。配列要素は `buildings[0]` のように指定する。`highlight[]` の語だけ赤く大きく表示する。
 - `hero: {path, caption}`: 外観。`map_path / division_path`: 地図・区画図画像。`navigation`: カーナビ住所。
 - `facilities[]: {name, distance_m}`: 周辺施設。徒歩は道路距離÷80の切上げ。
 - `buildings[].features[] / comments[]`: 入力済みの特長とコメント。価格付近は3ラベルまで、残りは間取り下部。
@@ -94,7 +94,20 @@ python3 build_sheet.py --data /path/to/property.json --out /private/tmp/sheet-ro
 
 ## 点検と計算
 
-`checks.py` の `check(data)` が `level / id / path / message / question` の一覧を返す。法令名辞書外は warning。禁止語はキャッチ・副文・ラベル・コメントを再帰的に点検。キャッチ中の m・分・帖・㎡ は道路・交通・室・面積の入力値に照合する。坪は Decimal により㎡×0.3025を小数第2位切捨て。価格合計も Decimal で計算する。
+`checks.py` の `check(data)` が `level / id / path / message / question` の一覧を返す。入力全体は `property.schema.json`（JSON Schema draft 2020-12）に照らし、型違いと必須キー不足を error、定義外のキーを warning にする。外部ライブラリは使わず、`type / required / properties / items / enum` を検査する。
+
+文章は次を点検する。
+
+- `basis` がない文章は warning。パスが存在しない、または参照値が空の場合も warning。
+- 禁止語はキャッチ・副文・特長・コメントと、その候補すべてで error。
+- `帖 / J / m / ㎡ / 分 / Nバルコニー` の数値は `basis` の参照先に照合し、不一致は error。`basis` がなければ入力全体を照合する。
+- 文字数は warning。キャッチは各行28字・2行、サブコピーは8〜16字、特長は4〜15字、コメントは各行16字・2行が基準。
+
+### 文章候補から選ぶ流れ
+
+トップレベルの `copy_candidates` に `catch / subcopy / features / comments` を置く。キャッチは候補ごとに行の配列、コメント候補は `building / room / text / side / basis` を持つ。候補は紙面に出ず、`report.md` の「文章の候補」表と `report.json` の `candidates` に番号付きで出る。営業は本文・根拠と禁止語／数値／文字数の OK・NG を見て番号を選び、選んだ値を本文側の `catch` 等へ移す。
+
+法令名辞書外は warning。坪は Decimal により㎡×0.3025を小数第2位切捨て。価格合計も Decimal で計算する。
 
 この試作は指定設計資料のルールを実装したもの。規約全体の適法性を判定するものではない。法令名辞書は `checks.py` の `LAWS`。数値の文脈判定、画像内の文字・部屋数の自動読取、参照先と無関係な同値の区別は行わない。
 
@@ -105,3 +118,7 @@ TASK.md の verification を実行。禁止語入り final は exit=2、PDF 未�
 Chrome は sandbox 内で exit=-6。通常実行の架空 final と浜崎 rough は PDF 失敗を示す exit=1。HTML とレポートは完成、`--no-pdf` で両方 exit=0。`pdfinfo`・`pdftoppm` は PDF 不在で失敗したため、1ページ B4 の実測と preview PNG の目視は未検証。
 
 完成版画像を開いて配色・配置・文字比率を観察し、黒い左帯、明朝キャッチ、赤い強調、価格、SVG3階分、概要、設備・保証、会社帯に反映した。完成版の間取りを上下に分けた配置に対し、本試作は3階を横並びにする。地図・区画図は未設定枠、ロゴは文字、設備は文字バッジ。ブラウザのローカル URL 表示もポリシーで拒否されたため、生成 HTML のはみ出し・可読性を目視確認できていない。サンドボックス外の Chrome で TASK.md の PDF 生成・寸法・PNG 目視確認を継続する。
+
+未選択のキャッチ・サブコピー・特長ラベル（null・空文字・空配列）は、rough で項目ごとに未選択 warning を1件表示し、根拠・文字数は点検しない。final ではキャッチ・販売対象棟の特長ラベルは error、任意のサブコピーは warning。済の棟と、図面に焼き込み済みの場合もある空のコメントは選択要求の対象外。
+
+室数照合は居室・洋室・和室・主寝室・子供部屋を数える。納戸・サービスルーム・Sは居室から除き、間取りに +S があるとき存在を確認する。3(4)LDK は3室か4室なら一致。逆質問では号棟名、未入力なら「この新築の棟（N番目）」を示す。

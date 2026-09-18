@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 import time
 from decimal import Decimal
-from checks import COMMON, BUILDING, LAND, check, empty, number, tsubo, minutes
+from checks import COMMON, BUILDING, LAND, candidate_report, check, empty, number, prose_text, tsubo, minutes
 
 ROOT = Path(__file__).resolve().parent
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -24,7 +24,7 @@ def esc(value):
     return html.escape(str(value), quote=True)
 
 def readable_annotations(payload, width_mm, height_mm):
-    """Keep annotation text at >=6pt in the specified object-fit image cell.
+    """Keep annotation text at >=7pt in the specified object-fit image cell.
 
     Only the embedded copy is changed. Reflow small comments into independent
     columns below the drawing, extending the viewBox to include every line.
@@ -47,16 +47,17 @@ def readable_annotations(payload, width_mm, height_mm):
     width_px=width_mm*96/25.4
     height_px=height_mm*96/25.4
     original_scale=min(width_px/view[2], height_px/view[3])
-    if min(font(t) for t in texts)*original_scale>=8:  # 8 CSS px = 6pt
+    minimum_px=7*96/72
+    if min(font(t) for t in texts)*original_scale>=minimum_px:
         return payload
     # The source annotation layer has one text element per comment line.
     # Reserve printed-space line height first, then solve the drawing scale.
     top=min(float(t.get('y','0'))-font(t) for t in texts)
     drawing_height=max(1, top-view[1])
     rows=max(len(g.findall(ns+'text')) for g in groups)
-    reserve_px=8*(rows*1.25+0.75)
+    reserve_px=minimum_px*(rows*1.25+0.75)
     scale=min(width_px/view[2], max(1,height_px-reserve_px)/drawing_height)
-    size=8/scale
+    size=minimum_px/scale
     bottom=top+reserve_px/scale
     root.set('viewBox', ' '.join(map(str,[view[0],view[1],view[2],bottom-view[1]])))
     root.set('height',str(bottom-view[1]))
@@ -73,7 +74,7 @@ def readable_annotations(payload, width_mm, height_mm):
         for line in g.findall(ns+'line'):
             line.set('x2',str(center))
             line.set('y2',str(top))
-    root.set('data-annotation-min-pt','6')
+    root.set('data-annotation-min-pt','7')
     ET.register_namespace('', 'http://www.w3.org/2000/svg')
     return ET.tostring(root,encoding='utf-8')
 
@@ -90,7 +91,7 @@ def main():
     # Never leave a previous successful PDF or HTML behind after a rejected revision.
     for filename in ['naka.pdf','naka.html']:
         (args.out/filename).unlink(missing_ok=True)
-    items=check(d)
+    items=check(d, stage=args.stage)
     def issue(id,path,message,question,level='error'):
         items.append(dict(id=id,path=path,level=level,message=message,question=question))
     def missing(label): return '<span class="missing">要入力：'+esc(label)+'</span>'
@@ -137,14 +138,15 @@ def main():
     sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
     for a in d.get('facilities',[]): sidebar+='<li><span>'+esc(a.get('name',''))+'</span><i></i><span>'+walk(a.get('distance_m'))+'</span></li>'
     sidebar+='</ul></section>'
-    catch=d.get('catch',[])
-    if isinstance(catch,str): catch=[catch]
+    catch=d.get('catch') or []
+    if isinstance(catch,(str,dict)): catch=[catch]
     highlighted=[]
     words=[w for w in d.get('highlight',[]) if w]
     for line in catch:
+        line=prose_text(line)
         parts=re.split('('+'|'.join(re.escape(w) for w in sorted(words,key=len,reverse=True))+')',line) if words else [line]
         highlighted.append(''.join('<em>'+esc(p)+'</em>' if p in words else esc(p) for p in parts))
-    title='<div class="catch '+('missing' if any(x['path']=='catch' and x['level']=='error' for x in items) else '')+'">'+'<br>'.join(highlighted)+'</div><div class="subcopy">'+value(d.get('subcopy',''),'サブコピー','subcopy')+'</div>'
+    title='<div class="catch '+('missing' if any(x['path']=='catch' and x['level']=='error' for x in items) else '')+'">'+'<br>'.join(highlighted)+'</div><div class="subcopy">'+value(prose_text(d.get('subcopy','')),'サブコピー','subcopy')+'</div>'
     hero=d.get('hero') or {}
     hero_html=asset(hero.get('path'),'外観パース','hero.path')+'<figcaption>'+value(hero.get('caption'),'画像の種類','hero.caption')+'</figcaption>' if hero else asset(None,'外観パース','hero.path')
     division='<div class="division"><h3>Division'+(' 建築条件付売地' if lands else '')+'</h3>'+asset(d.get('division_path'),'区画図','division_path')+'<div class="statuses">'
@@ -164,13 +166,13 @@ def main():
         p=f'buildings.{i}'
         cards+='<article class="building"><div class="price-panel"><h2>◀ Room Plan ▶</h2><div class="unit-name">'+field(b,'name','号棟',p)+'</div><div class="price"><small>販売価格</small><b>'+amount(b.get('price'))+'</b><span>〈税込〉<br>万円</span></div><strong class="layout">'+field(b,'layout','間取り',p)+'</strong><p>土地面積／'+area(b.get('land_area'))+'<br>建物面積／'+area(b.get('building_area'))
         if b.get('has_garage'): cards+='<br>'+value(f'※車庫部分{b.get("garage_area", "未入力")}㎡含む' if b.get('garage_included') else None,'車庫面積・算入',p+'.garage_area')
-        cards+='<br>建築確認番号／'+field(b,'confirmation','建築確認番号',p)+'</p><div class="features">'+''.join('<span class="feature-badge">'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[:3])+'</div>'
+        cards+='<br>建築確認番号／'+field(b,'confirmation','建築確認番号',p)+'</p><div class="features">'+''.join('<span class="feature-badge">'+value(prose_text(t),'特長ラベル',p+'.features')+'</span>' for t in (b.get('features') or [])[:3])+'</div>'
         cards+='</div><div class="plan-one">'+plans(b,p,(75,45) if mixed else (80,39),None if mixed else slice(0,1))+'</div>'
         if not mixed:
             cards+='<div class="plan-rest">'+plans(b,p,(131,109),slice(1,None))+'</div>'
-        cards+='<div class="plan-extras">'+''.join('<span class="feature-badge">'+value(t,'特長ラベル',p+'.features')+'</span>' for t in b.get('features',[])[3:])
+        cards+='<div class="plan-extras">'+''.join('<span class="feature-badge">'+value(prose_text(t),'特長ラベル',p+'.features')+'</span>' for t in (b.get('features') or [])[3:])
         if b.get('comments'):
-            cards+='<div class="comments">'+''.join('<span>'+value(t,'コメント',p+'.comments')+'</span>' for t in b['comments'])+'</div>'
+            cards+='<div class="comments">'+''.join('<span>'+value(prose_text(t),'コメント',p+'.comments')+'</span>' for t in b['comments'])+'</div>'
         cards+='</div></article>'
     if active_l:
         cards+='<section class="land-cards">'
@@ -229,10 +231,16 @@ def main():
     equipment='<div class="standard">標準設備・仕様<br><strong>安心な快適な<br>住まいの創造</strong></div><div class="warranties">'+''.join('<div>'+esc(w)+'</div>' for w in d.get('warranties',[]))+'</div><div class="badges">'+''.join('<span>'+esc(e)+'</span>' for e in display_equipment)+'</div>'
     footer='<div class="licenses">'+esc(' ／ '.join(company['licenses']))+'</div><div class="company-row"><div class="company-name"><small>LAND STYLE</small><b>'+esc(company['name'])+'</b><small>'+esc(company['address'])+'</small></div><div class="web"><b>インターネットでラクラク検索！<br>最新情報を常時公開中！</b><strong>'+esc(company['url'])+'</strong></div><div class="contact"><strong>TEL '+esc(company['tel'])+'</strong><small>受付時間 '+esc(company['hours'])+'（定休日 '+esc(company['closed'])+'）</small></div><div class="fax">FAX '+esc(company['fax'])+'<b>営業社員 募集中！</b><small>'+esc(company['email'])+'</small></div><div class="transaction">取引態様<br><b>'+esc(d.get('transaction',company['transaction']))+'</b><small>手数料'+esc(d.get('commission',company['commission']))+'</small></div></div>'
     def report(pdf_status):
-        result=dict(stage=args.stage,pdf_status=pdf_status,items=items,counts={lv:sum(x['level']==lv for x in items) for lv in ['error','warning']})
+        candidates=candidate_report(d)
+        result=dict(stage=args.stage,pdf_status=pdf_status,items=items,counts={lv:sum(x['level']==lv for x in items) for lv in ['error','warning']},candidates=[{k:v for k,v in x.items() if k!='items'} for x in candidates])
         (args.out/'report.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
         md=f'# 点検レポート\n\n段階: {args.stage} / PDF: {pdf_status}\n\nerror: {result["counts"]["error"]}, warning: {result["counts"]["warning"]}\n\n'
         md+='\n'.join(f'- [{x["level"]}] {x["id"]} ({x["path"]}) {x["message"]}\n  逆質問: {x["question"]}' for x in items)
+        md+='\n\n## 文章の候補\n\n'
+        md+='| 番号 | 種類 | 本文 | 根拠 | 禁止語 | 数値 | 文字数 |\n|---:|---|---|---|---|---|---|\n'
+        for x in candidates:
+            clean=lambda v: str(v).replace('|','\\|').replace('\n','<br>')
+            md+=f'| {x["number"]} | {clean(x["label"])} | {clean(x["text"])} | {clean("、".join(x["basis"]) or "未指定")} | {"OK" if x["checks"]["banned"] else "NG"} | {"OK" if x["checks"]["numbers"] else "NG"} | {"OK" if x["checks"]["length"] else "NG"} |\n'
         (args.out/'report.md').write_text(md+'\n',encoding='utf-8')
     if args.stage=='final' and any(x['level']=='error' for x in items):
         report('blocked'); print('点検 error のため出力停止。report.json / report.md: '+str(args.out.resolve())); return 2
