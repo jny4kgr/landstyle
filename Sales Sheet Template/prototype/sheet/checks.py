@@ -157,7 +157,7 @@ def check(data, stage='rough'):
             issue(id,path+'.'+key,label+'が未入力または不正です。',label+'を教えていただけますか？')
     c=data.get('common',{})
     for id,key,label in COMMON:
-        if id in {'P01','P02','P04','P11','P14','P19'} or (id=='P15' and data.get('lands')):
+        if id in {'P01','P02','P04','P11','P14','P15','P19'}:  # P15 は新築だけの物件でも必須（完成版は常に記載）
             require(c,key,id,'common',label)
     if c.get('rights')=='借地権':
         for key,label in [('lease_type','借地権の種類'),('lease_term','借地期間'),('ground_rent','地代')]:
@@ -182,7 +182,7 @@ def check(data, stage='rough'):
                 issue('B11' if kind=='buildings' else 'L11',p+'.status','販売状況が不正です。','販売中・商談中・済のいずれですか？')
             if b.get('status')=='済': continue
             for id,key,label in fields:
-                if key in {'layout','condition','handover'}: continue
+                if key in {'condition','handover'} or (key=='layout' and kind!='buildings'): continue  # 新築の間取り(B03)は必須
                 if key=='name' and empty(b.get(key)) and kind=='buildings':
                     issue(id,p+'.name',subject+'の号棟が未入力です。',subject+'は何号棟ですか？（例: 1号棟）')
                 else:

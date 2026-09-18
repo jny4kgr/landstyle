@@ -94,7 +94,7 @@ def main():
     items=check(d, stage=args.stage)
     def issue(id,path,message,question,level='error'):
         items.append(dict(id=id,path=path,level=level,message=message,question=question))
-    def missing(label): return '<span class="missing">要入力：'+esc(label)+'</span>'
+    def missing(label): return '' if args.stage=='final' else '<span class="missing">要入力：'+esc(label)+'</span>'  # final では空欄を印字しない
     def value(v,label,path=''):
         bad=any(x['path']==path and x['level']=='error' for x in items) if path else False
         if empty(v): return missing(label)
@@ -251,6 +251,9 @@ def main():
     replacements={'css':(ROOT/'templates/naka.css').read_text(encoding='utf-8'),'sidebar':sidebar,'sidebar_style':f'--life-height:{life_height}mm;--life-count:{facility_count};--life-font:{life_font}pt','title':title,'hero':hero_html,'division':division,'cards':cards,'overview':overview,'equipment':equipment,'footer':footer,'review':review,'mode':'mixed' if lands or len(active_b)>1 else 'single'}
     for key,v in replacements.items(): template=template.replace('{{ '+key+' }}',v)
     (args.out/'naka.html').write_text(template,encoding='utf-8')
+    if args.stage=='final' and '要入力' in template:  # 安全装置: 仕上げに要入力の文字を残さない
+        items.append(dict(id='FINAL_PLACEHOLDER',path='naka.html',level='error',message='仕上げの紙面に「要入力」が残っています。',question='未入力の項目を埋めていただけますか？'))
+        report('blocked'); print('仕上げの紙面に「要入力」が残ったため出力停止。'); return 2
     if args.no_pdf:
         report('skipped'); print('HTML出力: '+str((args.out/'naka.html').resolve())); return 0
     with tempfile.TemporaryDirectory(prefix='sheet-chrome-') as profile:
