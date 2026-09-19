@@ -1,0 +1,7 @@
+# 販売図面プロトタイプの依存（s6_floorplan.py・s6_triage.py・sheet/build_sheet.py）
+# PDF 化には Google Chrome（/Applications/Google Chrome.app）も必要
+pymupdf
+opencv-python-headless
+numpy
+pillow
+jinja2

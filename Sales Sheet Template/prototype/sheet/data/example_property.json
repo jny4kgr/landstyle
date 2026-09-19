@@ -1,0 +1,262 @@
+{
+  "series": "Lancasa",
+  "city": "架空市",
+  "area": "みどり町1丁目",
+  "roman": "FICTIONAL MIDORICHO",
+  "catch": [
+    {
+      "text": "光と風を感じる、家族の住まい。",
+      "basis": [
+        "common.address"
+      ]
+    },
+    "新築住宅と建築条件付売地。"
+  ],
+  "highlight": [
+    "家族の住まい"
+  ],
+  "subcopy": {
+    "text": "家族と過ごす新しい毎日",
+    "basis": [
+      "buildings[0].layout"
+    ]
+  },
+  "common": {
+    "address": "架空県架空市みどり町1丁目1付近",
+    "lot_address": "架空市みどり町一丁目100番1ほか",
+    "zoning": "第一種住居地域",
+    "coverage": 60,
+    "far": 200,
+    "height_zone": "25m地区",
+    "fire_zone": "法22条区域",
+    "land_category": "宅地",
+    "planning": "市街化区域",
+    "rights": "所有権",
+    "utilities": [
+      "東京電力",
+      "公営水道",
+      "本下水",
+      "都市ガス"
+    ],
+    "roads": [
+      {
+        "direction": "南側",
+        "width_m": 6,
+        "type": "公道",
+        "paved": true
+      }
+    ],
+    "private_road": "なし",
+    "laws": [
+      "景観法",
+      "文化財保護法"
+    ],
+    "valid_until": "2026-12-31"
+  },
+  "access": [
+    {
+      "line": "架空みどり線",
+      "station": "みどり中央",
+      "distance_m": 720
+    }
+  ],
+  "navigation": "架空市みどり町1丁目1付近",
+  "facilities": [
+    {
+      "name": "架空みどり小学校",
+      "distance_m": 700
+    },
+    {
+      "name": "架空中央公園",
+      "distance_m": 320
+    }
+  ],
+  "equipment": [
+    "アクセントクロス",
+    "浴室換気乾燥機",
+    "温水洗浄便座",
+    "カラーTVモニターインターホン",
+    "物干し金具",
+    "玄関ドア電気錠",
+    "網戸",
+    "オールインワン浄水器",
+    "全室Low-Eペアガラス",
+    "食器洗浄乾燥機（深型）",
+    "フラット35S（金利Bタイプ）"
+  ],
+  "warranties": [
+    "住宅保証機構 まもりすまい保険（10年）",
+    "地盤保証（修補費限度額5,000万円・引渡し日より20年間）"
+  ],
+  "utility_poles_possible": true,
+  "buildings": [
+    {
+      "name": "1号棟",
+      "status": "販売中",
+      "price": 3980,
+      "layout": "3(4)LDK+2バルコニー",
+      "land_area": 110.56,
+      "area_basis": "実測",
+      "building_area": 88.39,
+      "has_garage": false,
+      "structure": "木造コロニアル葺2階建",
+      "confirmation": "第架空26確認00001号",
+      "completion": "2026年11月末",
+      "completion_status": "完成予定",
+      "handover": "相談",
+      "handover_month": "2026年12月以降・相談",
+      "features": [
+        {
+          "text": "全居室収納付",
+          "basis": [
+            "buildings[0].rooms"
+          ]
+        },
+        "オープンキッチン",
+        {
+          "text": "2バルコニー",
+          "basis": [
+            "buildings[0].layout"
+          ]
+        }
+      ],
+      "rooms": [
+        {
+          "type": "居室",
+          "jo": 6
+        },
+        {
+          "type": "居室",
+          "jo": 5
+        },
+        {
+          "type": "居室",
+          "jo": 5
+        },
+        {
+          "type": "LDK",
+          "jo": 16
+        }
+      ],
+      "floorplans": [],
+      "comments": []
+    }
+  ],
+  "lands": [
+    {
+      "name": "2号区",
+      "status": "販売中",
+      "price": 2090,
+      "land_area": 110.57,
+      "area_basis": "実測",
+      "condition": "更地",
+      "handover": "2026年12月以降・相談",
+      "contract_months": 3,
+      "contractor": "株式会社ランドスタイル",
+      "reference_plan": {
+        "price": 2000,
+        "building_area": 86.94,
+        "layout": "3LDK",
+        "adoption_optional": true,
+        "extra_costs": [
+          {
+            "label": "設計・確認申請費（税込）",
+            "amount": 50
+          },
+          {
+            "label": "給排水引込費（税込）",
+            "amount": 30
+          }
+        ],
+        "floorplans": []
+      }
+    },
+    {
+      "name": "3号区",
+      "status": "販売中",
+      "price": 2190,
+      "land_area": 110.56,
+      "area_basis": "実測",
+      "condition": "更地",
+      "handover": "2026年12月以降・相談",
+      "contract_months": 3,
+      "contractor": "株式会社ランドスタイル",
+      "reference_plan": {
+        "price": 2000,
+        "building_area": 88.39,
+        "layout": "3LDK",
+        "adoption_optional": true,
+        "extra_costs": [
+          {
+            "label": "設計・確認申請費（税込）",
+            "amount": 50
+          },
+          {
+            "label": "給排水引込費（税込）",
+            "amount": 30
+          }
+        ],
+        "floorplans": []
+      }
+    }
+  ],
+  "copy_candidates": {
+    "catch": [
+      [
+        {
+          "text": "徒歩9分、暮らしが広がる街。",
+          "basis": [
+            "access[0]"
+          ]
+        },
+        {
+          "text": "家族で育てる新しい住まい。",
+          "basis": [
+            "buildings[0].layout"
+          ]
+        }
+      ],
+      [
+        {
+          "text": "南側6m公道に面した住まい。",
+          "basis": [
+            "common.roads[0].width_m"
+          ]
+        }
+      ]
+    ],
+    "subcopy": [
+      {
+        "text": "家族と過ごす新しい毎日",
+        "basis": [
+          "buildings[0].layout"
+        ]
+      }
+    ],
+    "features": [
+      {
+        "text": "LDK16帖",
+        "basis": [
+          "buildings[0].rooms"
+        ]
+      },
+      {
+        "text": "2バルコニー",
+        "basis": [
+          "buildings[0].layout"
+        ]
+      }
+    ],
+    "comments": [
+      {
+        "building": "1号棟",
+        "room": "LDK",
+        "text": "16帖の家族空間",
+        "side": "bottom",
+        "basis": [
+          "buildings[0].rooms"
+        ]
+      }
+    ]
+  }
+}

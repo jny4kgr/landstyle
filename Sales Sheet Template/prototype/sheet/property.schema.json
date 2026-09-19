@@ -1,0 +1,1104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "property.schema.json",
+  "title": "販売図面 物件データ",
+  "description": "S1〜S14 の中面生成に使う物件データ。項目IDは03_S13物件概要_項目定義.mdに対応。",
+  "type": "object",
+  "properties": {
+    "series": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "シリーズ名（S2）"
+    },
+    "city": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "市区名（S2）"
+    },
+    "area": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "町名・エリア（S2）"
+    },
+    "roman": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ローマ字表記（S2）"
+    },
+    "catch": {
+      "type": [
+        "array",
+        "null",
+        "string"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "description": "文章。AI作成時は text と根拠パス basis を指定",
+        "properties": {
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "表示する文章"
+          },
+          "basis": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "根拠となる項目のドット記法パス"
+            },
+            "description": "根拠項目"
+          }
+        },
+        "required": [
+          "text",
+          "basis"
+        ]
+      },
+      "description": "キャッチ各行（S3）。null・空文字・空配列は未選択。"
+    },
+    "highlight": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "キャッチ内の強調語"
+      },
+      "description": "強調語（S3）"
+    },
+    "subcopy": {
+      "type": [
+        "string",
+        "object",
+        "null",
+        "array"
+      ],
+      "description": "文章。AI作成時は text と根拠パス basis を指定。null・空文字・空配列は未選択。",
+      "properties": {
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "表示する文章"
+        },
+        "basis": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "根拠となる項目のドット記法パス"
+          },
+          "description": "根拠項目"
+        }
+      },
+      "required": [
+        "text",
+        "basis"
+      ]
+    },
+    "copy_candidates": {
+      "type": "object",
+      "properties": {
+        "catch": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ],
+              "description": "文章。AI作成時は text と根拠パス basis を指定",
+              "properties": {
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "表示する文章"
+                },
+                "basis": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "根拠となる項目のドット記法パス"
+                  },
+                  "description": "根拠項目"
+                }
+              },
+              "required": [
+                "text",
+                "basis"
+              ]
+            },
+            "description": "候補の行"
+          },
+          "description": "キャッチ候補"
+        },
+        "subcopy": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "文章。AI作成時は text と根拠パス basis を指定",
+            "properties": {
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "表示する文章"
+              },
+              "basis": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "根拠となる項目のドット記法パス"
+                },
+                "description": "根拠項目"
+              }
+            },
+            "required": [
+              "text",
+              "basis"
+            ]
+          },
+          "description": "サブコピー候補"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "文章。AI作成時は text と根拠パス basis を指定",
+            "properties": {
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "表示する文章"
+              },
+              "basis": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "根拠となる項目のドット記法パス"
+                },
+                "description": "根拠項目"
+              }
+            },
+            "required": [
+              "text",
+              "basis"
+            ]
+          },
+          "description": "特長候補"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "building": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "対象号棟"
+              },
+              "room": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "対象室"
+              },
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "コメント本文"
+              },
+              "side": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "引出し方向"
+              },
+              "basis": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "根拠パス"
+                },
+                "description": "根拠項目"
+              }
+            },
+            "required": [
+              "building",
+              "room",
+              "text",
+              "side"
+            ],
+            "description": "間取りコメント候補"
+          },
+          "description": "コメント候補"
+        }
+      },
+      "required": [],
+      "description": "営業が選ぶ文章候補"
+    },
+    "common": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "住居表示（P01）"
+        },
+        "lot_address": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "地番（P02）"
+        },
+        "zoning": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "用途地域（P04）"
+        },
+        "coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "建ぺい率%（P05）"
+        },
+        "far": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "容積率%（P06）"
+        },
+        "height_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "高度地区（P07）"
+        },
+        "fire_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "防火地域（P08）"
+        },
+        "land_category": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "地目（P09）"
+        },
+        "planning": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "都市計画（P10）"
+        },
+        "rights": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "土地権利（P11）"
+        },
+        "lease_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "借地権種類（P11）"
+        },
+        "lease_term": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "借地期間（P11）"
+        },
+        "ground_rent": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "地代（P11）"
+        },
+        "utilities": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "電力・水道・排水・ガス（P12）"
+          },
+          "description": "設備（P12）"
+        },
+        "roads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "direction": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "接道方位（P13）"
+              },
+              "width_m": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "道路幅員m（P13）"
+              },
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "公道・私道（P13）"
+              },
+              "paved": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "舗装の有無（P13）"
+              }
+            },
+            "required": [
+              "direction",
+              "width_m",
+              "type"
+            ],
+            "description": "接道（P13）"
+          },
+          "description": "接道（P13）"
+        },
+        "private_road": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "私道負担（P14）"
+        },
+        "laws": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法令名（P15）"
+          },
+          "description": "法令制限（P15）"
+        },
+        "valid_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "取引条件有効期限（P19）"
+        }
+      },
+      "required": [
+        "address",
+        "lot_address",
+        "zoning",
+        "coverage",
+        "far",
+        "height_zone",
+        "fire_zone",
+        "land_category",
+        "planning",
+        "rights",
+        "utilities",
+        "roads",
+        "private_road",
+        "laws",
+        "valid_until"
+      ],
+      "description": "物件共通概要（P01〜P19）"
+    },
+    "access": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "路線（P03）"
+          },
+          "station": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "駅（P03）"
+          },
+          "distance_m": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "道路距離m（P03）"
+          }
+        },
+        "required": [
+          "line",
+          "station",
+          "distance_m"
+        ],
+        "description": "交通（P03）"
+      },
+      "description": "交通（P03）"
+    },
+    "navigation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "カーナビ住所（S11）"
+    },
+    "facilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "施設名（S12）"
+          },
+          "distance_m": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "道路距離m（S12）"
+          }
+        },
+        "required": [
+          "name",
+          "distance_m"
+        ],
+        "description": "周辺施設（S12）"
+      },
+      "description": "周辺施設（S12）"
+    },
+    "equipment": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "設備名（B10/S9）"
+      },
+      "description": "共通設備"
+    },
+    "warranties": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "保証文（S9）"
+      },
+      "description": "保証"
+    },
+    "utility_poles_possible": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "電柱・支線の可能性（N2）"
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "号棟（B01）"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "販売状況（B11）",
+            "enum": [
+              "販売中",
+              "商談中",
+              "済"
+            ]
+          },
+          "price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "販売価格・万円（B02）"
+          },
+          "layout": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "間取り（B03）"
+          },
+          "land_area": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "土地面積㎡（B04）"
+          },
+          "area_basis": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "公簿・実測（B04）"
+          },
+          "building_area": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "建物面積㎡（B05）"
+          },
+          "has_garage": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "車庫の有無（B05）"
+          },
+          "garage_area": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "車庫面積㎡（B05）"
+          },
+          "garage_included": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "建物面積への車庫算入（B05）"
+          },
+          "structure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "構造・階数（B06）"
+          },
+          "confirmation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "建築確認番号（B07）"
+          },
+          "completion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "完成時期（B08）"
+          },
+          "completion_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "完成状態（B08）",
+            "enum": [
+              "完成予定",
+              "完成済"
+            ]
+          },
+          "handover": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "引渡条件（B09）"
+          },
+          "handover_month": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "引渡可能年月（B09）"
+          },
+          "equipment": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "設備名（B10）"
+            },
+            "description": "棟別設備（B10）"
+          },
+          "features": {
+            "type": [
+              "array",
+              "null",
+              "string"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ],
+              "description": "文章。AI作成時は text と根拠パス basis を指定",
+              "properties": {
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "表示する文章"
+                },
+                "basis": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "根拠となる項目のドット記法パス"
+                  },
+                  "description": "根拠項目"
+                }
+              },
+              "required": [
+                "text",
+                "basis"
+              ]
+            },
+            "description": "特長ラベル（S8）。null・空文字・空配列は未選択。"
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "室種別（B03）。居室・洋室・和室・主寝室・子供部屋を居室として数える。納戸・サービスルーム・Sは居室に含めず、+Sに対応する。LDKは別に照合。3(4)等の可変表記は3室または4室を許容。"
+                },
+                "jo": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "帖数（B03）"
+                }
+              },
+              "required": [
+                "type",
+                "jo"
+              ],
+              "description": "室と帖数"
+            },
+            "description": "室一覧（B03）"
+          },
+          "floorplans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "階・図面の表示名"
+                },
+                "path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "画像パス"
+                }
+              },
+              "required": [
+                "label",
+                "path"
+              ],
+              "description": "間取り図画像"
+            },
+            "description": "間取り図（S6）"
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ],
+              "description": "文章。AI作成時は text と根拠パス basis を指定",
+              "properties": {
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "表示する文章"
+                },
+                "basis": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "根拠となる項目のドット記法パス"
+                  },
+                  "description": "根拠項目"
+                }
+              },
+              "required": [
+                "text",
+                "basis"
+              ]
+            },
+            "description": "間取りコメント（S6）"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "description": "新築棟（B01〜B11）"
+      },
+      "description": "新築棟（P16）"
+    },
+    "lands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "区画番号（L01）"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "販売状況（L11）",
+            "enum": [
+              "販売中",
+              "商談中",
+              "済"
+            ]
+          },
+          "price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "土地価格・万円（L02）"
+          },
+          "land_area": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "土地面積㎡（L03）"
+          },
+          "area_basis": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "公簿・実測（L03）"
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "現況（L04）"
+          },
+          "handover": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "引渡し（L05）"
+          },
+          "contract_months": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "請負契約期限・月数（L06）"
+          },
+          "contractor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "請負先（L06）"
+          },
+          "reference_plan": {
+            "type": "object",
+            "properties": {
+              "price": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "参考建物価格・万円（L07）"
+              },
+              "building_area": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "参考建物面積㎡（L08）"
+              },
+              "layout": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "参考間取り"
+              },
+              "adoption_optional": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "採用自由の確認（N7）"
+              },
+              "extra_costs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "費用名（L10）"
+                    },
+                    "amount": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "金額・万円（L10）"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "amount"
+                  ],
+                  "description": "追加費用（L10）"
+                },
+                "description": "追加費用（L10）"
+              },
+              "floorplans": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "階・図面の表示名"
+                    },
+                    "path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "画像パス"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "path"
+                  ],
+                  "description": "間取り図画像"
+                },
+                "description": "参考間取り図"
+              }
+            },
+            "required": [
+              "price",
+              "building_area",
+              "layout",
+              "adoption_optional",
+              "extra_costs",
+              "floorplans"
+            ],
+            "description": "参考プラン"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "description": "建築条件付売地区画（L01〜L11）"
+      },
+      "description": "土地（P16）"
+    },
+    "hero": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "画像パス（S4）"
+        },
+        "caption": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "画像種別・撮影日（N8）"
+        }
+      },
+      "required": [],
+      "description": "外観画像（S4）"
+    },
+    "map_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "地図画像パス（S11）"
+    },
+    "division_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "区画図画像パス（S7）"
+    },
+    "transaction": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "取引態様（S14）"
+    },
+    "commission": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "手数料表示（S14）"
+    }
+  },
+  "required": [
+    "series",
+    "city",
+    "area",
+    "roman",
+    "catch",
+    "highlight",
+    "subcopy",
+    "common",
+    "access",
+    "facilities",
+    "equipment",
+    "warranties",
+    "utility_poles_possible",
+    "buildings",
+    "lands"
+  ]
+}
