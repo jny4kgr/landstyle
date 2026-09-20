@@ -1,9 +1,76 @@
 {
-  "_doc": "items に車または引出しコメントを指定する。room は図面上の室名と一致させる。at は部屋の外接矩形内の相対座標 [x,y]（左上が [0,0]）。side/outside は left/right/top/bottom。存在しない room の項目は警告して読み飛ばす。",
+  "_doc": "items に車または引出しコメントを指定する。room は図面上の室名と一致させる。洋室A/B/C のような枝番は省略可能（完全一致がなければ候補を面積順に調べ、家具を置ける部屋を選ぶ）。at は部屋の外接矩形内の相対座標 [x,y]（左上が [0,0]）。side/outside は left/right/top/bottom。存在しない room の項目は警告して読み飛ばす。 家具と矢印は営業の希望がある場合のみ。furniture の kind は sofa/dining4/dining6/bed_single/bed_double/tv。実寸で配置し、at 省略時は重心、rotate は 0/90/180/270（0 は長辺が左右、ベッドの枕は右側）。室名と部屋の外を避けて近くを探し、配置できなければ警告して省略。arrow の points は同じ相対座標（部屋の外も可）、color は red/black、線幅は実寸120mm。描画順は家具→矢印→車→コメント。",
   "items": [
-    {"type": "car", "room": "車庫"},
-    {"type": "car", "outside": "left"},
-    {"type": "comment", "room": "納戸", "text": "客間としても利用可能な\n6帖のサービスルーム", "side": "bottom"},
-    {"type": "comment", "room": "LDK", "text": "家族を見守れる\nオープンキッチン", "side": "bottom", "at": [0.7, 0.5]}
+    {
+      "type": "furniture",
+      "room": "LDK",
+      "kind": "sofa",
+      "at": [
+        0.2,
+        0.55
+      ],
+      "rotate": 0
+    },
+    {
+      "type": "furniture",
+      "room": "LDK",
+      "kind": "dining4",
+      "at": [
+        0.5,
+        0.7
+      ]
+    },
+    {
+      "type": "furniture",
+      "room": "洋室",
+      "kind": "bed_single",
+      "at": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "type": "arrow",
+      "room": "LDK",
+      "points": [
+        [
+          0.78,
+          0.3
+        ],
+        [
+          0.78,
+          0.55
+        ],
+        [
+          0.95,
+          0.55
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "type": "car",
+      "room": "車庫"
+    },
+    {
+      "type": "car",
+      "outside": "left"
+    },
+    {
+      "type": "comment",
+      "room": "納戸",
+      "text": "客間としても利用可能な\n6帖のサービスルーム",
+      "side": "bottom"
+    },
+    {
+      "type": "comment",
+      "room": "LDK",
+      "text": "家族を見守れる\nオープンキッチン",
+      "side": "bottom",
+      "at": [
+        0.7,
+        0.5
+      ]
+    }
   ]
 }

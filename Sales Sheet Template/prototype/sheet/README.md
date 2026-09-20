@@ -130,6 +130,13 @@ Chrome は sandbox 内で exit=-6。通常実行の架空 final と浜崎 rough 
 
 ### 手順 3.5: 地図と区画図
 
+駅へのルートは `--station "北朝霞駅" --station "朝霞台駅"` のように複数指定できます。最初の駅のルート全体が入る範囲と zoom を自動選択します。`--zoom` を指定すると現地中心の指定倍率になります。駅検索・ルート取得が失敗した駅は警告して省略し、現地の地図は作ります。
+
+**出た距離は必ず営業に確認してから `access[].distance_m` に書いてください。** 規約は道路距離での表示を求め、駅のどの出入口を起点にするかで距離が変わるためです。スクリプトは property.json を更新しません。標準出力に確認文と採用した駅の表示名、`map.png.json` の `stations` に `name`・`display_name`・`distance_m`・`walk_min` を出します。
+
+駅検索は Nominatim（User-Agent つき、呼び出し間隔1秒以上）、歩行ルートは Valhalla を使い、両方とも `--cache` の下に保存して再利用します。ルートつき画像の出典は「出典：国土地理院（地理院タイル）／© OpenStreetMap contributors」、メタデータは `sources: ["gsi", "osm"]` です。紙面も `map_source: "gsi+osm"` で同じ出典になり、未指定なら map_path に隣接する `<png>.json` の sources から自動判定します。`--offline-test` は南西600m先のダミー駅と3区間の折れ線を使用し、`--self-test` で polyline の復元を確認できます。
+
+
 ```sh
 python "$S/sheet/make_map.py" --address "<物件住所>" --out "$P/map.png"
 # 座標が分かっている場合
@@ -172,3 +179,7 @@ python "$S/sheet/build_sheet.py" --data "$P/property.json" --out "$P/out/<日付
 `--stage final` は、紙面に「要入力」または画像の「未設定」の枠（地図・外観パース・間取り図・区画図・施工例）が残っていると、PDF を出さずに終了コード 2 で止まる。リポジトリの架空データ（`data/example_property.json`）は画像を持たないので、検証するときは `--allow-missing-images` を付ける。実物件では付けない。
 
 地図は `map_source` が `gsi`（既定）のとき、画像が切り抜かれても出典が消えないよう、紙面側にも「出典：国土地理院（地理院タイル）」を重ねて表示する。
+
+### 手順 5: 家具・家事動線の書き足し
+
+家具と家事動線の矢印は、営業が希望したときだけ `--annot` で入れます。`prototype/annot_example.json` の furniture / arrow を参考に、部屋名・種類・位置・回転、矢印の折れ点と色を指定してください。配置できない家具は警告して省略されます。

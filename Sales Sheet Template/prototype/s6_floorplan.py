@@ -505,6 +505,15 @@ def _room_masks(rooms, region, crop):
             continue
         box = (int(xs.min() - cx0), int(ys.min() - cy0), int(xs.max() - cx0), int(ys.max() - cy0))
         found.setdefault(room["cad"], []).append((box, region[id(room)][cy0:cy1, cx0:cx1]))
+    # 「洋室A/B/C」等は、枝番を省いた注釈名でも指定可能にする。
+    # 完全一致を優先し、複数候補は既存の最大面積選択に渡す。
+    aliases = {}
+    for name, entries in found.items():
+        stem = re.sub(r"[A-ZＡ-Ｚ0-9０-９]+$", "", name)
+        if stem and stem != name:
+            aliases.setdefault(stem, []).extend(entries)
+    for name, entries in aliases.items():
+        found.setdefault(name, entries)
     return found
 
 
@@ -528,6 +537,9 @@ def _annotation_plan(path, room_masks, building_size):
                 print(f"warning: invalid annotation side: {side}", file=sys.stderr); continue
             # 車の短辺に少し余白を足す。
             sides[side] = max(sides[side], int(2200 * S / PT_MM))
+        elif typ in ("furniture", "arrow"):
+            if not room:
+                print(f"warning: room required for {typ}", file=sys.stderr); continue
         elif typ not in ("car", "comment"):
             print(f"warning: invalid annotation type: {typ}", file=sys.stderr); continue
         valid.append(item)
@@ -559,6 +571,67 @@ def _draw_car(draw, center, size, vertical=True):
     return "\n".join(svg)
 
 
+# Furniture primitives use real millimetres; both outputs share transformed polygons.
+FURNITURE = {"sofa": (1800,850), "dining4": (1350,800), "dining6": (1800,850),
+             "bed_single": (1000,2000), "bed_double": (1400,2000), "tv": (1500,450)}
+
+
+def _furniture_shapes(kind, rotate):
+    w,h = FURNITURE[kind]
+    rectangles = [(-w/2,-h/2,w/2,h/2)]
+    if kind == "sofa":
+        rectangles += [(-w/2,-h/2,w/2,-h/2+180), (-w/2,-h/2,-w/2+180,h/2),
+                       (w/2-180,-h/2,w/2,h/2), (-w/2+180,-h/2+180,0,h/2), (0,-h/2+180,w/2-180,h/2)]
+    elif kind.startswith("dining"):
+        count = 2 if kind == "dining4" else 3
+        for i in range(count):
+            x = -w/2 + w*(i+.5)/count
+            rectangles += [(x-200,-h/2-400,x+200,-h/2-20), (x-200,h/2+20,x+200,h/2+400)]
+    elif kind.startswith("bed"):
+        rectangles += [(-w/2+70,-h/2+70,w/2-70,-h/2+450), (-w/2,-h/2+550,w/2,h/2)]
+    else:
+        rectangles += [(-w*.4,-h*.25,w*.4,h*.05)]
+    # rotate=0 は長辺を左右に向ける（ベッドの枕は右側）。
+    angle = math.radians(rotate + (90 if kind.startswith("bed") else 0))
+    c,t = round(math.cos(angle)), round(math.sin(angle))
+    scale = S/PT_MM
+    return [[((x*c-y*t)*scale, (x*t+y*c)*scale) for x,y in ((a,b),(d,b),(d,e),(a,e))]
+            for a,b,d,e in rectangles]
+
+
+def _place_furniture(mask, box, at, shapes, avoid):
+    xs = [x for shape in shapes for x,y in shape]
+    ys = [y for shape in shapes for x,y in shape]
+    # Include outline pixels in the full footprint, including dining chairs.
+    hw,hh = math.ceil(max(abs(x) for x in xs))+2, math.ceil(max(abs(y) for y in ys))+2
+    free = (mask != 0).astype(np.uint8)
+    # 部屋の中の細い線（天井の破線・床下収納の記号など）で空き領域が細切れになるのを防ぐ。壁（約27px以上）は越えない幅にする
+    free = cv2.morphologyEx(free, cv2.MORPH_CLOSE, np.ones((11,11),np.uint8))
+    for a,b,c,d in avoid:
+        free[max(0,int(b)):max(0,math.ceil(d)+1),max(0,int(a)):max(0,math.ceil(c)+1)] = 0
+    valid = cv2.erode(free, np.ones((2*hh+1,2*hw+1),np.uint8), borderType=cv2.BORDER_CONSTANT, borderValue=0)
+    yy,xx = np.nonzero(valid)
+    if not len(xx):
+        return None
+    my,mx = np.nonzero(mask)
+    x0,y0,x1,y1 = box
+    target = (mx.mean(),my.mean()) if at is None else (x0+(x1-x0)*at[0],y0+(y1-y0)*at[1])
+    d2 = (xx-target[0])**2+(yy-target[1])**2
+    i = np.argmin(d2)
+    # 指定した位置から実寸 1.5m を超えて動かすくらいなら置かない（通路や別の場所に勝手に置かれるのを防ぐ）
+    if d2[i] > (1500 * S / PT_MM) ** 2:
+        return None
+    return int(xx[i]),int(yy[i])
+
+
+def _draw_polygon(draw, points, fill, stroke=None, width=1):
+    draw.polygon(points, fill=fill)
+    if stroke:
+        draw.line(points+[points[0]], fill=stroke, width=width, joint="curve")
+    coords = " ".join(f"{x:.2f},{y:.2f}" for x,y in points)
+    return f'<polygon points="{coords}" fill="{fill}" stroke="{stroke or fill}" stroke-width="{width}"/>'
+
+
 def _comment_origin(mask, box, at, side, avoid):
     """全マスク画素から、文字と side 方向の直線が干渉しない最寄り点を選ぶ。"""
     ys, xs = np.nonzero(mask)
@@ -568,9 +641,10 @@ def _comment_origin(mask, box, at, side, avoid):
     target = (xs.mean(), ys.mean()) if at is None else (
         x0 + (x1-x0)*float(at[0]), y0 + (y1-y0)*float(at[1]))
     good = np.ones(len(xs), bool)
-    # 黒丸の半径も含めて避ける。avoid 自体は文字外接矩形 + 8px。
+    # 起点の黒丸（半径2.5*S）と線幅の両方を含めて避ける。
+    clearance = math.ceil(2.5*S) + 1
     for left, top, right, bottom in avoid:
-        left, top, right, bottom = left-3, top-3, right+3, bottom+3
+        left, top, right, bottom = left-clearance, top-clearance, right+clearance, bottom+clearance
         if side == "bottom":
             hit = (xs >= left) & (xs <= right) & (ys <= bottom)
         elif side == "top":
@@ -594,7 +668,8 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
     font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", 11*S)
     measure = ImageDraw.Draw(base)
     avoid = [(a-8, b-8, c+8, d+8) for a,b,c,d in label_boxes]
-    cars, comments = [], []
+    cars, comments, furniture, arrows = [], [], [], []
+    object_boxes = []
     bounds = [0., 0., float(base.width), float(base.height)]
 
     def include(box):
@@ -603,11 +678,49 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
         bounds[2] = max(bounds[2], box[2]+24)
         bounds[3] = max(bounds[3], box[3]+24)
 
-    for item in items:
+    # Complete object placement before comment routing, regardless of JSON order.
+    # Stable sorting preserves the requested order among furniture items.
+    for item in sorted(items, key=lambda item: item["type"] == "comment"):
         room = item.get("room")
         if room:
             box, mask = max(masks[room], key=lambda v: int(v[1].sum()))
             x0, y0, x1, y1 = box
+        if item["type"] == "furniture":
+            kind, rotate = item.get("kind"), item.get("rotate",0)
+            if kind not in FURNITURE or rotate not in (0,90,180,270):
+                print(f"warning: invalid furniture: {kind}, {rotate}", file=sys.stderr); continue
+            shapes = _furniture_shapes(kind, rotate)
+            center = None
+            for candidate_box, candidate_mask in sorted(masks[room], key=lambda v: int(v[1].sum()), reverse=True):
+                center = _place_furniture(candidate_mask, candidate_box, item.get("at"), shapes, avoid)
+                if center is not None:
+                    break
+            if center is None:
+                print(f"warning: no clear furniture position: {room}/{kind}", file=sys.stderr); continue
+            furniture.append((kind, center, shapes))
+            vertices = [(x+center[0],y+center[1]) for shape in shapes for x,y in shape]
+            footprint = (min(x for x,y in vertices)-2, min(y for x,y in vertices)-2,
+                         max(x for x,y in vertices)+2, max(y for x,y in vertices)+2)
+            avoid.append(footprint)
+            object_boxes.append(footprint)
+            continue
+        if item["type"] == "arrow":
+            points = [(x0+(x1-x0)*a,y0+(y1-y0)*b) for a,b in item.get("points",[])]
+            points = [p for i,p in enumerate(points) if i == 0 or p != points[i-1]]
+            color = item.get("color","red")
+            if len(points)<2 or color not in ("red","black"):
+                print("warning: invalid arrow", file=sys.stderr); continue
+            sw = max(1,round(120*S/PT_MM))
+            tip,prev = points[-1],points[-2]
+            angle = math.atan2(tip[1]-prev[1],tip[0]-prev[0])
+            ux,uy = math.cos(angle),math.sin(angle)
+            head = [tip, (tip[0]-3*sw*ux+1.5*sw*uy,tip[1]-3*sw*uy-1.5*sw*ux),
+                    (tip[0]-3*sw*ux-1.5*sw*uy,tip[1]-3*sw*uy+1.5*sw*ux)]
+            all_points = points+head
+            include((min(x for x,y in all_points)-sw, min(y for x,y in all_points)-sw,
+                     max(x for x,y in all_points)+sw, max(y for x,y in all_points)+sw))
+            arrows.append((points,head,"#d7141a" if color == "red" else "#000000",sw))
+            continue
         if item["type"] == "car":
             length, width = int(4700*S/PT_MM), int(1800*S/PT_MM)
             if room:
@@ -631,7 +744,15 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
             half_w, half_h = (width*.6, length/2) if vertical else (length/2, width*.6)
             include((center[0]-half_w, center[1]-half_h, center[0]+half_w, center[1]+half_h))
             cars.append((center, (length, width), vertical))
+            footprint = (center[0]-half_w-3, center[1]-half_h-3,
+                         center[0]+half_w+3, center[1]+half_h+3)
+            avoid.append(footprint)
+            object_boxes.append(footprint)
             continue
+        # Put the exterior bends and text beyond cars as well as the building.
+        # The ray from the chosen origin is clear; later bends stay outside this envelope.
+        for a,b,c,d in object_boxes:
+            left, top, right, bottom = min(left,a), min(top,b), max(right,c), max(bottom,d)
         side = item.get("side", "bottom")
         origin = _comment_origin(mask, box, item.get("at"), side, avoid)
         if origin is None:
@@ -673,6 +794,18 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
     draw = ImageDraw.Draw(result)
     elements = []
     color, sw = svg_color(LINE_RGB), max(2, S)
+    for kind, center, shapes in furniture:
+        body = ''.join(_draw_polygon(draw, [(x+center[0]+ox,y+center[1]+oy) for x,y in shape],
+                                     "white", "#8a8686", max(1,S//2)) for shape in shapes)
+        elements.append(f'<g data-annot="furniture" data-kind="{kind}">{body}</g>')
+    for points, head, arrow_color, arrow_sw in arrows:
+        points = [(x+ox,y+oy) for x,y in points]
+        head = [(x+ox,y+oy) for x,y in head]
+        draw.line(points,fill=arrow_color,width=arrow_sw,joint="curve")
+        coords = " ".join(f"{x:.2f},{y:.2f}" for x,y in points)
+        body = f'<polyline points="{coords}" fill="none" stroke="{arrow_color}" stroke-width="{arrow_sw}" stroke-linejoin="round"/>'
+        body += _draw_polygon(draw,head,arrow_color)
+        elements.append(f'<g data-annot="arrow">{body}</g>')
     for center, size, vertical in cars:
         body = _draw_car(draw, (center[0]+ox, center[1]+oy), size, vertical)
         elements.append(f'<g data-annot="car">{body}</g>')
@@ -1202,6 +1335,6 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--debug-dir")
     ap.add_argument("--svg", help="PNG と同時に、編集用の4層 SVG を出力")
-    ap.add_argument("--annot", help="車・引出しコメントを指定する JSON")
+    ap.add_argument("--annot", help="家具・矢印・車・引出しコメントを指定する JSON")
     a = ap.parse_args()
     build(a.pdf, a.page, a.floor, a.out, a.debug_dir, a.svg, a.annot)

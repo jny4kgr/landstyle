@@ -60,6 +60,8 @@ python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --s
 - 答えを JSON に書いたら、もう一度 `rough` を実行して、error が減ったことを確かめる
 
 ### 手順 5: 文章の候補
+
+家具と家事動線の矢印は、営業が希望したときだけ `--annot` で入れます。`prototype/annot_example.json` の furniture / arrow を参考に、部屋名・種類・位置・回転、矢印の折れ点と色を指定してください。配置できない家具は警告して省略されます。
 `property.json` の `copy_candidates` に候補を書き、`rough` を実行して `report.md` の「文章の候補」の表を営業に見せ、番号で選んでもらう。
 
 | 種類 | 数 | 長さ | 書き方 |
@@ -90,7 +92,7 @@ python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --s
 
 ## 5. 今できないこと
 
-家具のイラスト、家事動線の矢印、駅までのルート線、スキャン画像しかない設計図書からの間取り図は、まだ自動で作れない。営業には「この部分は従来どおり用意が必要」と伝える。地図・区画図・設備アイコン・表紙は下の追加手順で作れる。
+スキャン画像しかない設計図書からの間取り図は、まだ自動で作れない。営業には「この部分は従来どおり用意が必要」と伝える。地図・区画図・設備アイコン・表紙は下の追加手順で作れる。
 
 
 ## 地図・区画図・表紙の作成手順（追加）
@@ -98,6 +100,13 @@ python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --s
 Python は `prototype/.venv/bin/python` を使います（既存の Pillow・OpenCV・NumPy が必要です）。実物件のデータと出力は引き続きリポジトリ外へ置いてください。
 
 ### 手順 3.5: 地図と区画図
+
+駅へのルートは `--station "北朝霞駅" --station "朝霞台駅"` のように複数指定できます。最初の駅のルート全体が入る範囲と zoom を自動選択します。`--zoom` を指定すると現地中心の指定倍率になります。駅検索・ルート取得が失敗した駅は警告して省略し、現地の地図は作ります。
+
+**出た距離は必ず営業に確認してから `access[].distance_m` に書いてください。** 規約は道路距離での表示を求め、駅のどの出入口を起点にするかで距離が変わるためです。スクリプトは property.json を更新しません。標準出力に確認文と採用した駅の表示名、`map.png.json` の `stations` に `name`・`display_name`・`distance_m`・`walk_min` を出します。
+
+駅検索は Nominatim（User-Agent つき、呼び出し間隔1秒以上）、歩行ルートは Valhalla を使い、両方とも `--cache` の下に保存して再利用します。ルートつき画像の出典は「出典：国土地理院（地理院タイル）／© OpenStreetMap contributors」、メタデータは `sources: ["gsi", "osm"]` です。紙面も `map_source: "gsi+osm"` で同じ出典になり、未指定なら map_path に隣接する `<png>.json` の sources から自動判定します。`--offline-test` は南西600m先のダミー駅と3区間の折れ線を使用し、`--self-test` で polyline の復元を確認できます。
+
 
 ```sh
 python "$S/sheet/make_map.py" --address "<物件住所>" --out "$P/map.png"

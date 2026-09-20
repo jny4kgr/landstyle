@@ -1199,6 +1199,7 @@
       ],
       "enum": [
         "gsi",
+        "gsi+osm",
         "other",
         null
       ],

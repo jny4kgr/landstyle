@@ -137,7 +137,22 @@ def main():
     sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+esc(d.get('series','Lancasa'))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations">'
     for i,a in enumerate(d.get('access',[])):
         sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+walk(a.get('distance_m'))+'</strong></div>'
-    sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+('<span class="map-credit">出典：国土地理院（地理院タイル）</span>' if not empty(d.get('map_path')) and d.get('map_source','gsi')=='gsi' else '')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
+    map_source = d.get('map_source')
+    if not map_source and d.get('map_path'):
+        map_file = Path(d['map_path']).expanduser()
+        if not map_file.is_absolute():
+            map_file = args.data.parent / map_file
+        sidecar = Path(str(map_file) + '.json')
+        if sidecar.is_file():
+            try:
+                if 'osm' in json.loads(sidecar.read_text(encoding='utf-8')).get('sources', []):
+                    map_source = 'gsi+osm'
+            except (OSError, ValueError, AttributeError, TypeError) as exc:
+                print(f'warning: 地図の出典メタデータを読めません: {exc}', file=sys.stderr)
+    map_source = map_source or 'gsi'
+    map_credit = {'gsi': '出典：国土地理院（地理院タイル）',
+                  'gsi+osm': '出典：国土地理院（地理院タイル）／© OpenStreetMap contributors'}.get(map_source, '')
+    sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+('<span class="map-credit">'+map_credit+'</span>' if not empty(d.get('map_path')) and map_credit else '')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
     for a in d.get('facilities',[]): sidebar+='<li><span>'+esc(a.get('name',''))+'</span><i></i><span>'+walk(a.get('distance_m'))+'</span></li>'
     sidebar+='</ul></section>'
     catch=d.get('catch') or []
