@@ -75,7 +75,15 @@ class RouteFetcher:
                              urlencode(dict(q=name, format='jsonv2', countrycodes='jp', limit=5)))
         if not results:
             raise ValueError('駅が見つかりません')
-        chosen = next((r for r in results if r.get('type') in ('train_station', 'station')), results[0])
+        # 同じ名前の駅が別の地域にもあるので、現地にいちばん近い候補を選ぶ。5km より遠ければ別の駅とみなして使わない
+        def km(r):
+            dy = (float(r['lat']) - lat) * 111.0
+            dx = (float(r['lon']) - lon) * 111.0 * math.cos(math.radians(lat))
+            return math.hypot(dx, dy)
+        pool = [r for r in results if r.get('type') in ('train_station', 'station')] or results
+        chosen = min(pool, key=km)
+        if km(chosen) > 5:
+            raise ValueError(f'現地から5km以内に見つかりません（最も近い候補まで約{km(chosen):.0f}km）')
         end = (float(chosen['lat']), float(chosen['lon']))
         query = dict(locations=[dict(lat=lat, lon=lon), dict(lat=end[0], lon=end[1])],
                      costing='pedestrian', units='kilometers')
@@ -253,8 +261,11 @@ def compose_map(lat, lon, zoom, size, label='現地', fetch_tile=None, stations=
         sx, sy = pixel(station['lat'], station['lon'])
         occupied.append((sx-9, sy-9, sx+9, sy+9))
     labels = [(f'【{label}】', (cx,cy), 34, 3, 28, '#d7141a')]
+    def onscreen(point):
+        return 0 <= point[0] < width and 0 <= point[1] < height
+    # 画像の外にある駅のラベルは出さない（無関係な場所に駅名が出るのを防ぐ）
     labels.extend((station['name'], pixel(station['lat'], station['lon']), 24, 2, 9, '#1e6fd9')
-                  for station in stations)
+                  for station in stations if onscreen(pixel(station['lat'], station['lon'])))
     for text, point, fs, stroke, radius, color in labels:
         layout = _label_layout(draw, text, point, size, occupied, fs, stroke, radius)
         if layout:
