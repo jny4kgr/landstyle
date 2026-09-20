@@ -1,0 +1,50 @@
+@page { size: 364mm 257mm; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; color: #231f20; font-family: 'Hiragino Mincho ProN', 'YuMincho', serif; }
+body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+figure, p, h1 { margin: 0; }
+.cover-sheet { width: 364mm; height: 257mm; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.front, .back { position: relative; overflow: hidden; min-width: 0; }
+.front { border-left: .2mm solid #eee; }
+img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo { position: absolute; top: 10mm; left: 9mm; width: 55mm; height: 15mm; }
+.ribbon { position: absolute; background: #d7141a; width: 270mm; height: 34mm; transform: rotate(-38deg); left: -43mm; }
+.ribbon-one { top: 70mm; }
+.ribbon-two { top: 194mm; height: 27mm; }
+.photo { position: absolute; width: 87mm; height: 68mm; clip-path: polygon(24% 0,100% 0,76% 100%,0 100%); background: #fafafa; }
+.photo img { object-fit: cover; }
+.photo-1 { right: -12mm; top: 0; height: 81mm; }
+.photo-2 { left: -10mm; bottom: 0; height: 92mm; }
+.photo-3 { right: -9mm; bottom: 0; height: 83mm; }
+.photo figcaption { position: absolute; bottom: 5mm; left: 24%; background: white; padding: 1mm; font: 7pt sans-serif; }
+.placeholder { display: flex; align-items: center; justify-content: center; height: 100%; border: .3mm dashed #aaa; color: #777; font: 8pt sans-serif; }
+.hero { position: absolute; left: 8mm; top: 81mm; width: 80mm; height: 90mm; padding: 2mm; background: white; box-shadow: 0 0 0 .4mm #eee; overflow: hidden; }
+.hero img { object-fit: cover; object-position: center; }
+.hero figcaption { position: absolute; left: 4mm; bottom: 4mm; right: 4mm; font: 7pt/1.3 sans-serif; color: #222; -webkit-text-stroke: .6mm white; paint-order: stroke fill; }
+header { position: absolute; left: 93mm; top: 89mm; width: 83mm; padding: 4mm 2mm; background: white; text-align: center; overflow-wrap: anywhere; }
+.series { font-size: 29pt; letter-spacing: 1pt; }
+header small { font-size: 9pt; }
+.city { margin-top: 6mm; font-size: 20pt; }
+h1 { font-size: 31pt; line-height: 1.3; }
+.roman { margin-top: 2mm; font-size: 8pt; letter-spacing: .7pt; }
+header p { font-size: 10pt; margin-top: 5mm; line-height: 1.8; }
+.qr-list { position: absolute; top: 68mm; left: 15mm; right: 15mm; display: flex; flex-wrap: wrap; justify-content: center; gap: 8mm; }
+.qr { width: 68mm; text-align: center; font: 8pt/1.5 sans-serif; }
+.qr figcaption { min-height: 10mm; }
+.qr > div { width: 43mm; height: 43mm; margin: 2mm auto; padding: 1mm; border: 1mm solid #d7141a; border-radius: 4mm; }
+.company-map { position: absolute; right: 12mm; bottom: 47mm; width: 75mm; height: 51mm; display: grid; grid-template-rows: minmax(0,1fr) 6mm; border: .3mm solid #888; padding: 1mm; }
+.company-map figcaption { font: 7pt sans-serif; }
+footer { position: absolute; left: 7mm; right: 7mm; bottom: 7mm; border-top: .5mm solid #231f20; padding-top: 2mm; font-family: sans-serif; }
+.licenses { font-size: 5.5pt; line-height: 1.5; margin-bottom: 2mm; }
+.company-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2mm; align-items: center; }
+.company-name { display: flex; flex-direction: column; }
+.company-name b { font-size: 14pt; }
+.company-name small, .contact small, .fax small { display: block; font-size: 5.5pt; }
+.web { font-size: 6pt; }
+.web b, .web strong { display: block; }
+.contact strong { font-size: 17pt; }
+.fax { font-size: 8pt; }
+.fax b { display: block; font-size: 6pt; }
+.transaction { font-size: 6pt; }
+.transaction br { display: none; }
+.transaction small { padding-left: 2mm; }

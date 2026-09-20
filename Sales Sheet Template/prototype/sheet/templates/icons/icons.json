@@ -1,0 +1,92 @@
+[
+  {
+    "keywords": [
+      "アクセントクロス"
+    ],
+    "file": "wall.svg"
+  },
+  {
+    "keywords": [
+      "浴室換気",
+      "浴室乾燥"
+    ],
+    "file": "bath.svg"
+  },
+  {
+    "keywords": [
+      "温水洗浄"
+    ],
+    "file": "toilet.svg"
+  },
+  {
+    "keywords": [
+      "インターホン"
+    ],
+    "file": "intercom.svg"
+  },
+  {
+    "keywords": [
+      "物干し"
+    ],
+    "file": "laundry.svg"
+  },
+  {
+    "keywords": [
+      "電気錠"
+    ],
+    "file": "lock.svg"
+  },
+  {
+    "keywords": [
+      "網戸"
+    ],
+    "file": "screen.svg"
+  },
+  {
+    "keywords": [
+      "浄水器"
+    ],
+    "file": "water.svg"
+  },
+  {
+    "keywords": [
+      "Low-E",
+      "Low－E",
+      "ペアガラス"
+    ],
+    "file": "glass.svg"
+  },
+  {
+    "keywords": [
+      "食器洗浄",
+      "食器洗い"
+    ],
+    "file": "dishwasher.svg"
+  },
+  {
+    "keywords": [
+      "給湯器",
+      "エコキュート"
+    ],
+    "file": "heater.svg"
+  },
+  {
+    "keywords": [
+      "フラット35"
+    ],
+    "file": "flat35.svg"
+  },
+  {
+    "keywords": [
+      "床下収納"
+    ],
+    "file": "storage.svg"
+  },
+  {
+    "keywords": [
+      "宅配ボックス",
+      "宅配BOX"
+    ],
+    "file": "delivery.svg"
+  }
+]

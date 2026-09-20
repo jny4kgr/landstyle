@@ -15,7 +15,7 @@ aside, .main, .visual, .media-column, header, .cards, .building, .price-panel,
 }
 img { display: block; width: 100%; height: 100%; object-fit: contain; }
 aside { background: #231f20; color: white; padding: 3mm; display: grid; gap: 1mm;
-  grid-template-rows: 41mm 10mm 40mm minmax(12mm, 1fr) 7mm var(--life-height, 56mm); }
+  grid-template-rows: 41mm 10mm 40mm auto 7mm minmax(0, 1fr); }
 .brand { text-align: center; border: double 1mm white; padding: 1mm; line-height: 1.3; overflow: hidden; }
 .series { font-size: 22pt; letter-spacing: 2pt; }
 .brand h1 { font-size: var(--area-font, 25pt); letter-spacing: 0; white-space: nowrap; line-height: 1.4; }
@@ -28,7 +28,8 @@ aside h2 { font-size: 16pt; font-weight: normal; border-bottom: 1px solid white;
 .station small { font-size: 7pt; }
 .station b { font-size: 18pt; }
 .station strong { display: block; font-size: 10pt; }
-.map { background: white; color: #231f20; }
+.map { background: white; color: #231f20; width: 100%; aspect-ratio: 3 / 2; }
+.map img { object-fit: cover; object-position: center; }
 .navigation { font-size: 6pt; line-height: 1.3; overflow: hidden; }
 .life-section { display: grid; grid-template-rows: 6mm minmax(0, 1fr); }
 aside h3 { background: white; color: #231f20; font-size: 10pt; padding: .4mm 1mm; }
@@ -40,13 +41,12 @@ aside h3 { background: white; color: #231f20; font-size: 10pt; padding: .4mm 1mm
 .life li > span:last-child { white-space: nowrap; font-size: 6pt; }
 .main { padding-left: 2mm; display: grid; gap: 1mm; grid-template-rows: 148mm 40mm 25mm 6mm; }
 .visual { display: grid; grid-template-columns: 58mm minmax(0, 1fr); grid-template-rows: 24mm minmax(0, 1fr); gap: 2mm; }
-.media-column { grid-column: 1; grid-row: 1 / 3; display: grid; gap: 2mm; grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr); }
+.media-column { grid-column: 1; grid-row: 1 / 3; display: grid; gap: 2mm; grid-template-rows: minmax(0, 1fr) 52mm; }
 .hero { display: grid; grid-template-rows: minmax(0, 1fr) 4mm; }
 .hero figcaption { font-size: 6pt; }
-.division { border: 1px solid #aaa; display: grid; grid-template-rows: 7mm minmax(0, 1fr) 12mm; }
+/* Image cell: 57.47 x 44.47mm; render_siteplan uses 57.4 x 44.4mm. */
+.division { border: 1px solid #aaa; display: grid; grid-template-rows: 7mm minmax(0, 1fr); }
 .division h3 { background: #231f20; color: white; font-size: 8pt; padding: 1mm; }
-.statuses { display: flex; justify-content: space-around; align-items: center; gap: 1mm; font-size: 7pt; overflow: hidden; }
-.sold { border-radius: 50%; background: #d7141a; color: white; font-size: 19pt; padding: 0 2mm; }
 header { grid-column: 2; grid-row: 1; display: grid; grid-template-rows: minmax(0, 1fr) 5mm; }
 .catch { font-weight: bold; font-size: 14pt; line-height: 1.4; overflow-wrap: anywhere; overflow: hidden; }
 .catch em { color: #d7141a; font-style: normal; font-size: 19pt; }
@@ -125,3 +125,14 @@ footer { grid-column: 1 / 3; border: 1px solid #231f20; padding: 1mm 2mm; font-f
 .land-cards .floorplans { flex: 1; margin-top: 1mm; }
 .mixed .overview { font-size: 6.2pt; }
 .mixed .notes { font-size: 6pt; }
+/* Original line drawings, with two bounded label lines per equipment item. */
+.equipment { grid-template-columns: 27mm 43mm minmax(0, 1fr); background: white; border-top: .3mm solid #222; }
+.equipment .standard { background: white; color: #222; font-size: 8pt; }
+.standard strong { font-size: 9pt; }
+.warranties { grid-template-columns: 1fr; font-size: 6pt; gap: 1mm; }
+.equipment > .badges { padding: 0; }
+.badges { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .4mm; }
+.equipment-icon { display: grid; grid-template-rows: minmax(0, 1fr) 4.5mm; justify-items: center; overflow: hidden; }
+.equipment-icon svg { width: 6mm; height: 6mm; max-height: 100%; color: #111; }
+.badges .equipment-icon span { background: white; color: #111; border-radius: 0; padding: 0; font: 5.5pt/1.15 sans-serif; text-align: center; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.badges .text-badge { align-self: center; text-align: center; }

@@ -1082,6 +1082,115 @@
         "null"
       ],
       "description": "手数料表示（S14）"
+    },
+    "site_plan": {
+      "type": "object",
+      "required": [
+        "lots"
+      ],
+      "properties": {
+        "north_deg": {
+          "type": "number",
+          "description": "図の上から時計回りの北方向（度）"
+        },
+        "roads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "polygon",
+              "label"
+            ],
+            "properties": {
+              "polygon": {
+                "type": "array",
+                "minItems": 3,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "lots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "polygon"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "polygon": {
+                "type": "array",
+                "minItems": 3,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cover": {
+      "type": "object",
+      "properties": {
+        "photos": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "caption"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "caption": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "qr": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "url"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [

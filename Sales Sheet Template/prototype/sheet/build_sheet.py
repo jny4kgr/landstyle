@@ -84,12 +84,13 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--stage',choices=['rough','final'],required=True)
     parser.add_argument('--no-pdf',action='store_true')
+    parser.add_argument('--cover',action='store_true')
     args=parser.parse_args()
     d=json.loads(args.data.read_text(encoding='utf-8'))
     company=json.loads((ROOT/'data/company.json').read_text(encoding='utf-8'))
     args.out.mkdir(parents=True,exist_ok=True)
     # Never leave a previous successful PDF or HTML behind after a rejected revision.
-    for filename in ['naka.pdf','naka.html']:
+    for filename in ['naka.pdf','naka.html','cover.pdf','cover.html','siteplan.svg']:
         (args.out/filename).unlink(missing_ok=True)
     items=check(d, stage=args.stage)
     def issue(id,path,message,question,level='error'):
@@ -149,9 +150,17 @@ def main():
     title='<div class="catch '+('missing' if any(x['path']=='catch' and x['level']=='error' for x in items) else '')+'">'+'<br>'.join(highlighted)+'</div><div class="subcopy">'+value(prose_text(d.get('subcopy','')),'サブコピー','subcopy')+'</div>'
     hero=d.get('hero') or {}
     hero_html=asset(hero.get('path'),'外観パース','hero.path')+'<figcaption>'+value(hero.get('caption'),'画像の種類','hero.caption')+'</figcaption>' if hero else asset(None,'外観パース','hero.path')
-    division='<div class="division"><h3>Division'+(' 建築条件付売地' if lands else '')+'</h3>'+asset(d.get('division_path'),'区画図','division_path')+'<div class="statuses">'
-    for b in buildings+lands: division+='<span class="sold">済</span>' if b.get('status')=='済' else '<span>'+esc(b.get('name') or '号棟未入力')+' '+esc(b.get('status',''))+'</span>'
-    division+='</div></div>'
+    division_path=d.get('division_path')
+    if not division_path and d.get('site_plan'):
+        from make_siteplan import render_siteplan
+        try:
+            generated_plan=args.out/'siteplan.svg'
+            generated_plan.write_text(render_siteplan(d, frame_mm=(57.4, 44.4)),encoding='utf-8')
+            division_path=str(generated_plan.resolve())
+        except ValueError as exc:
+            if not any(x['id']=='SITE_PLAN' and x['level']=='error' for x in items):
+                issue('SITE_PLAN_LAYOUT','site_plan',str(exc),'区画図の座標・文字量と表示枠を確認してください。')
+    division='<div class="division"><h3>Division'+(' 建築条件付売地' if lands else '')+'</h3>'+asset(division_path,'区画図','division_path')+'</div>'
     def plans(obj,p,frame_mm=(80,39),selection=None):
         fs=list(enumerate(obj.get('floorplans',[])))
         if selection is not None:
@@ -228,8 +237,55 @@ def main():
             notes.append(('N7',esc(b.get('name',''))+free+'参考建物価格のほかに'+fees+'が必要です。'))
     overview+='<div class="notes">'+''.join('<span data-note="'+id+'">※'+text+'</span>' for id,text in notes)+'</div>'
     display_equipment=list(dict.fromkeys(d.get('equipment',[])+[e for _, b in active_b for e in b.get('equipment',[])]))
-    equipment='<div class="standard">標準設備・仕様<br><strong>安心な快適な<br>住まいの創造</strong></div><div class="warranties">'+''.join('<div>'+esc(w)+'</div>' for w in d.get('warranties',[]))+'</div><div class="badges">'+''.join('<span>'+esc(e)+'</span>' for e in display_equipment)+'</div>'
+    icon_rules=json.loads((ROOT/'templates/icons/icons.json').read_text(encoding='utf-8'))
+    def equipment_badge(label):
+        rule=next((rule for rule in icon_rules if any(word.casefold() in label.casefold() for word in rule['keywords'])),None)
+        if rule is None:
+            return '<span class="text-badge">'+esc(label)+'</span>'
+        svg=(ROOT/'templates/icons'/rule['file']).read_text(encoding='utf-8')
+        return '<div class="equipment-icon">'+svg+'<span>'+esc(label)+'</span></div>'
+    equipment='<div class="standard">標準設備・仕様<br><strong>安心な快適な<br>住まいの創造</strong></div><div class="warranties">'+''.join('<div>'+esc(w)+'</div>' for w in d.get('warranties',[]))+'</div><div class="badges">'+''.join(equipment_badge(e) for e in display_equipment)+'</div>'
     footer='<div class="licenses">'+esc(' ／ '.join(company['licenses']))+'</div><div class="company-row"><div class="company-name"><small>LAND STYLE</small><b>'+esc(company['name'])+'</b><small>'+esc(company['address'])+'</small></div><div class="web"><b>インターネットでラクラク検索！<br>最新情報を常時公開中！</b><strong>'+esc(company['url'])+'</strong></div><div class="contact"><strong>TEL '+esc(company['tel'])+'</strong><small>受付時間 '+esc(company['hours'])+'（定休日 '+esc(company['closed'])+'）</small></div><div class="fax">FAX '+esc(company['fax'])+'<b>営業社員 募集中！</b><small>'+esc(company['email'])+'</small></div><div class="transaction">取引態様<br><b>'+esc(d.get('transaction',company['transaction']))+'</b><small>手数料'+esc(d.get('commission',company['commission']))+'</small></div></div>'
+    cover_html=None
+    if args.cover:
+        import cv2
+        import numpy as np
+        cover=d.get('cover') or {}
+        photos=''
+        for i in range(3):
+            photo=(cover.get('photos') or [])[i] if i<len(cover.get('photos') or []) else None
+            if photo:
+                photos+=f'<figure class="photo photo-{i+1}">'+asset(photo.get('path'),'施工例の写真',f'cover.photos[{i}].path')+'<figcaption>'+esc(photo.get('caption',''))+'</figcaption></figure>'
+            elif args.stage=='rough':
+                photos+=f'<figure class="photo photo-{i+1}"><div class="placeholder">施工例の写真 未設定</div></figure>'
+        qrs=''
+        for i, qr in enumerate(cover.get('qr',company['cover_qr'])):
+            try:
+                raw=cv2.QRCodeEncoder_create().encode(qr['url'])
+                # Encoder versions can include their own quiet border. Trim to symbol,
+                # then add exactly four white modules and upscale without smoothing.
+                yy,xx=np.where(raw<128)
+                raw=raw[yy.min():yy.max()+1,xx.min():xx.max()+1]
+                raw=cv2.copyMakeBorder(raw,4,4,4,4,cv2.BORDER_CONSTANT,value=255)
+                raw=cv2.resize(raw,None,fx=8,fy=8,interpolation=cv2.INTER_NEAREST)
+                ok,encoded=cv2.imencode('.png',raw)
+                if not ok: raise ValueError('PNG変換失敗')
+                uri='data:image/png;base64,'+base64.b64encode(encoded.tobytes()).decode('ascii')
+                qrs+='\n<figure class="qr"><figcaption>▼'+esc(qr['label'])+'</figcaption><div><img src="'+uri+'" alt="'+esc(qr['label'])+'"></div></figure>'
+            except (cv2.error,ValueError,KeyError,TypeError) as exc:
+                issue('COVER_QR',f'cover.qr[{i}]','QRを生成できません：'+str(exc),'QRのURLと見出しを確認してください。')
+        access_map=''
+        if company.get('access_map_path'):
+            company_map=Path(company['access_map_path']).expanduser()
+            if not company_map.is_absolute(): company_map=ROOT/'data'/company_map
+            access_map='<figure class="company-map">'+asset(str(company_map),'会社への案内図','company.access_map_path')+'<figcaption>'+esc(company.get('access_map_caption',''))+'</figcaption></figure>'
+        logo=asset(str(ROOT/'data/assets/site-logo.svg'),'LAND STYLE','company.logo')
+        cover_html=(ROOT/'templates/cover.html.j2').read_text(encoding='utf-8')
+        cover_values={'css':(ROOT/'templates/cover.css').read_text(encoding='utf-8'),
+                      'logo':logo,'photos':photos,'hero':hero_html,'qrs':qrs,'access_map':access_map,
+                      'footer':footer,'series':esc(d.get('series','Lancasa')),'city':esc(d.get('city','')),
+                      'area':esc(d.get('area','')),'roman':esc(d.get('roman','')),'total':esc(total)}
+        for key,v in cover_values.items(): cover_html=cover_html.replace('{{ '+key+' }}',v)
     def report(pdf_status):
         candidates=candidate_report(d)
         result=dict(stage=args.stage,pdf_status=pdf_status,items=items,counts={lv:sum(x['level']==lv for x in items) for lv in ['error','warning']},candidates=[{k:v for k,v in x.items() if k!='items'} for x in candidates])
@@ -254,51 +310,54 @@ def main():
     if args.stage=='final' and '要入力' in template:  # 安全装置: 仕上げに要入力の文字を残さない
         items.append(dict(id='FINAL_PLACEHOLDER',path='naka.html',level='error',message='仕上げの紙面に「要入力」が残っています。',question='未入力の項目を埋めていただけますか？'))
         report('blocked'); print('仕上げの紙面に「要入力」が残ったため出力停止。'); return 2
+    if cover_html is not None:
+        (args.out/'cover.html').write_text(cover_html,encoding='utf-8')
     if args.no_pdf:
         report('skipped'); print('HTML出力: '+str((args.out/'naka.html').resolve())); return 0
-    with tempfile.TemporaryDirectory(prefix='sheet-chrome-') as profile:
-        pdf_path=(args.out/'naka.pdf').resolve()
-        command=[CHROME,'--headless=new','--disable-gpu','--no-first-run','--user-data-dir='+profile,'--no-pdf-header-footer','--print-to-pdf='+str(pdf_path),(args.out/'naka.html').resolve().as_uri()]
-        try:
-            pdf_path.unlink(missing_ok=True)
-            deadline=time.monotonic()+60
-            # A file-backed stderr avoids blocking on Chrome's repeated logs.
-            with tempfile.TemporaryFile(mode='w+b') as chrome_log:
-                proc=subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=chrome_log)
-                try:
-                    last_size=0
-                    stable_since=None
-                    while True:
-                        now=time.monotonic()
-                        if now>=deadline:
-                            raise subprocess.TimeoutExpired(command,60)
-                        size=pdf_path.stat().st_size if pdf_path.is_file() else 0
-                        if size>0:
-                            if size!=last_size or stable_since is None:
-                                stable_since=now
-                            elif now-stable_since>=0.5:
-                                break
-                        else:
-                            stable_since=None
-                        last_size=size
-                        if proc.poll() is not None and size==0:
-                            chrome_log.seek(0,2)
-                            chrome_log.seek(max(0,chrome_log.tell()-1500))
-                            detail=chrome_log.read().decode('utf-8',errors='replace')
-                            raise RuntimeError(f'Chrome exit={proc.returncode}: {detail}')
-                        time.sleep(min(0.1,max(0,deadline-time.monotonic())))
-                finally:
-                    # Stop Chrome before TemporaryDirectory removes its profile.
-                    if proc.poll() is None:
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=3)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-                            proc.wait()
-        except (OSError,RuntimeError,subprocess.TimeoutExpired) as exc:
-            pdf_path.unlink(missing_ok=True)
-            report('unavailable'); print('HTML完成。PDF生成不可: '+str(exc),file=sys.stderr); return 1
+    for page in (['naka','cover'] if args.cover else ['naka']):
+        with tempfile.TemporaryDirectory(prefix='sheet-chrome-') as profile:
+            pdf_path=(args.out/(page+'.pdf')).resolve()
+            command=[CHROME,'--headless=new','--disable-gpu','--no-first-run','--user-data-dir='+profile,'--no-pdf-header-footer','--print-to-pdf='+str(pdf_path),(args.out/(page+'.html')).resolve().as_uri()]
+            try:
+                pdf_path.unlink(missing_ok=True)
+                deadline=time.monotonic()+60
+                # A file-backed stderr avoids blocking on Chrome's repeated logs.
+                with tempfile.TemporaryFile(mode='w+b') as chrome_log:
+                    proc=subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=chrome_log)
+                    try:
+                        last_size=0
+                        stable_since=None
+                        while True:
+                            now=time.monotonic()
+                            if now>=deadline:
+                                raise subprocess.TimeoutExpired(command,60)
+                            size=pdf_path.stat().st_size if pdf_path.is_file() else 0
+                            if size>0:
+                                if size!=last_size or stable_since is None:
+                                    stable_since=now
+                                elif now-stable_since>=0.5:
+                                    break
+                            else:
+                                stable_since=None
+                            last_size=size
+                            if proc.poll() is not None and size==0:
+                                chrome_log.seek(0,2)
+                                chrome_log.seek(max(0,chrome_log.tell()-1500))
+                                detail=chrome_log.read().decode('utf-8',errors='replace')
+                                raise RuntimeError(f'Chrome exit={proc.returncode}: {detail}')
+                            time.sleep(min(0.1,max(0,deadline-time.monotonic())))
+                    finally:
+                        # Stop Chrome before TemporaryDirectory removes its profile.
+                        if proc.poll() is None:
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=3)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                                proc.wait()
+            except (OSError,RuntimeError,subprocess.TimeoutExpired) as exc:
+                pdf_path.unlink(missing_ok=True)
+                report('unavailable'); print('HTML完成。PDF生成不可: '+str(exc),file=sys.stderr); return 1
     report('created'); print('出力: '+str(args.out.resolve())); return 0
 
 if __name__=='__main__':
