@@ -30,6 +30,8 @@ aside h2 { font-size: 16pt; font-weight: normal; border-bottom: 1px solid white;
 .station strong { display: block; font-size: 10pt; }
 .map { background: white; color: #231f20; width: 100%; aspect-ratio: 3 / 2; }
 .map img { object-fit: cover; object-position: center; }
+.map { position: relative; overflow: hidden; }
+.map-credit { position: absolute; right: 0; bottom: 0; background: rgba(255,255,255,.85); color: #231f20; font-size: 4.5pt; line-height: 1.2; padding: .3mm .8mm; }  /* 画像が切り抜かれても出典が必ず残るよう、紙面側にも出す */
 .navigation { font-size: 6pt; line-height: 1.3; overflow: hidden; }
 .life-section { display: grid; grid-template-rows: 6mm minmax(0, 1fr); }
 aside h3 { background: white; color: #231f20; font-size: 10pt; padding: .4mm 1mm; }

@@ -85,6 +85,7 @@ def main():
     parser.add_argument('--stage',choices=['rough','final'],required=True)
     parser.add_argument('--no-pdf',action='store_true')
     parser.add_argument('--cover',action='store_true')
+    parser.add_argument('--allow-missing-images',action='store_true',help='final でも画像の「未設定」枠を許す（画像を持たない架空データの検証用）')
     args=parser.parse_args()
     d=json.loads(args.data.read_text(encoding='utf-8'))
     company=json.loads((ROOT/'data/company.json').read_text(encoding='utf-8'))
@@ -136,7 +137,7 @@ def main():
     sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+esc(d.get('series','Lancasa'))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations">'
     for i,a in enumerate(d.get('access',[])):
         sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+walk(a.get('distance_m'))+'</strong></div>'
-    sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
+    sidebar+='</div></section><div class="map">'+asset(d.get('map_path'),'地図','map_path')+('<span class="map-credit">出典：国土地理院（地理院タイル）</span>' if not empty(d.get('map_path')) and d.get('map_source','gsi')=='gsi' else '')+'</div><div class="navigation">カーナビ／'+value(d.get('navigation'),'カーナビ住所')+'</div><section class="life-section"><h3>Life Information</h3><ul class="life">'
     for a in d.get('facilities',[]): sidebar+='<li><span>'+esc(a.get('name',''))+'</span><i></i><span>'+walk(a.get('distance_m'))+'</span></li>'
     sidebar+='</ul></section>'
     catch=d.get('catch') or []
@@ -254,7 +255,7 @@ def main():
         photos=''
         for i in range(3):
             photo=(cover.get('photos') or [])[i] if i<len(cover.get('photos') or []) else None
-            if photo:
+            if photo and not empty(photo.get('path')):  # パスが空の枠は「写真なし」と同じ扱い
                 photos+=f'<figure class="photo photo-{i+1}">'+asset(photo.get('path'),'施工例の写真',f'cover.photos[{i}].path')+'<figcaption>'+esc(photo.get('caption',''))+'</figcaption></figure>'
             elif args.stage=='rough':
                 photos+=f'<figure class="photo photo-{i+1}"><div class="placeholder">施工例の写真 未設定</div></figure>'
@@ -312,6 +313,11 @@ def main():
         report('blocked'); print('仕上げの紙面に「要入力」が残ったため出力停止。'); return 2
     if cover_html is not None:
         (args.out/'cover.html').write_text(cover_html,encoding='utf-8')
+    if args.stage=='final' and not args.allow_missing_images:  # 安全装置: 仕上げに「未設定」の枠（地図・パース・間取り図・区画図など）を残さない
+        left=[name for name,html in (('naka.html',template),('cover.html',cover_html or '')) if '未設定' in html]
+        if left:
+            items.append(dict(id='FINAL_IMAGE_MISSING',path='、'.join(left),level='error',message='仕上げの紙面に画像の「未設定」の枠が残っています。',question='地図・外観パース・間取り図・区画図のうち、まだ用意できていない画像を教えていただけますか？'))
+            report('blocked'); print('仕上げの紙面に「未設定」の枠が残ったため出力停止。'); return 2
     if args.no_pdf:
         report('skipped'); print('HTML出力: '+str((args.out/'naka.html').resolve())); return 0
     for page in (['naka','cover'] if args.cover else ['naka']):

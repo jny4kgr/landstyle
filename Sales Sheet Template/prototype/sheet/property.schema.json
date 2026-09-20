@@ -1191,6 +1191,18 @@
           }
         }
       }
+    },
+    "map_source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "gsi",
+        "other",
+        null
+      ],
+      "description": "地図の出どころ（S11）。gsi＝国土地理院（既定。紙面に出典を表示する）、other＝自社で用意した地図（出典表示は画像側で行う）"
     }
   },
   "required": [
