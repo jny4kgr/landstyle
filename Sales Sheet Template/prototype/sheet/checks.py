@@ -236,5 +236,16 @@ def check(data, stage='rough'):
             items.extend(_prose_checks(data,v,'comments',f'buildings[{bi}].comments[{i}]')[0])
     for candidate in candidate_report(data): items.extend(candidate['items'])
     hero=data.get('hero') or {}
-    if hero.get('path') and not hero.get('caption'): issue('N8','hero.caption','画像キャプションがありません。','画像の種類と必要な撮影日を教えていただけますか？')
+    if hero.get('path') and empty(hero.get('caption')): issue('N8','hero.caption','画像キャプションがありません。','画像の種類と必要な撮影日を教えていただけますか？')
+    from make_siteplan import plan_issues
+    items.extend(plan_issues(data))
+    cover = data.get('cover') or {}
+    if isinstance(cover, dict):
+        photos = cover.get('photos', [])
+        if isinstance(photos, list):
+            if len(photos) > 3:
+                issue('COVER_PHOTOS', 'cover.photos', '施工例の写真は最大3枚です。', '3枚以内にしてください。')
+            for i, photo in enumerate(photos):
+                if isinstance(photo, dict) and empty(photo.get('caption')):
+                    issue('N8', f'cover.photos[{i}].caption', '写真の説明（弊社施工例 など）が必要です', '写真の説明を入力してください。')
     return items

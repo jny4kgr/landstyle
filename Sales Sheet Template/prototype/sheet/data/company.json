@@ -15,5 +15,17 @@
     "建設業許可(特-6)第68069号"
   ],
   "transaction": "売主",
-  "commission": "3%(税込)"
+  "commission": "3%(税込)",
+  "cover_qr": [
+    {
+      "label": "最新情報を常時公開中",
+      "url": "https://suumo.jp/ikkodate/__JJ_JJ010FJ001_arz1030z2bsz1020z2kkcz1133190001.html"
+    },
+    {
+      "label": "他にも弊社施工例はこちらでご覧になれます",
+      "url": "https://www.lansta.jp/live_news/"
+    }
+  ],
+  "access_map_path": null,
+  "access_map_caption": ""
 }
