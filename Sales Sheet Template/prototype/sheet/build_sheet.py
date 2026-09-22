@@ -11,6 +11,8 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from platform_paths import find_browser
 import subprocess
 import tempfile
 import time
@@ -18,7 +20,6 @@ from decimal import Decimal
 from checks import COMMON, BUILDING, LAND, candidate_report, check, empty, number, prose_text, tsubo, minutes
 
 ROOT = Path(__file__).resolve().parent
-CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 def esc(value):
     return html.escape(str(value), quote=True)
@@ -338,8 +339,8 @@ def main():
     for page in (['naka','cover'] if args.cover else ['naka']):
         with tempfile.TemporaryDirectory(prefix='sheet-chrome-') as profile:
             pdf_path=(args.out/(page+'.pdf')).resolve()
-            command=[CHROME,'--headless=new','--disable-gpu','--no-first-run','--user-data-dir='+profile,'--no-pdf-header-footer','--print-to-pdf='+str(pdf_path),(args.out/(page+'.html')).resolve().as_uri()]
             try:
+                command=[find_browser(),'--headless=new','--disable-gpu','--no-first-run','--user-data-dir='+profile,'--no-pdf-header-footer','--print-to-pdf='+str(pdf_path),(args.out/(page+'.html')).resolve().as_uri()]
                 pdf_path.unlink(missing_ok=True)
                 deadline=time.monotonic()+60
                 # A file-backed stderr avoids blocking on Chrome's repeated logs.

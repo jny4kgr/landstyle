@@ -10,6 +10,8 @@ import math
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from platform_paths import find_font
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from PIL import Image, ImageDraw, ImageFont
@@ -170,15 +172,7 @@ def dummy_tile(zoom, x, y):
 
 
 def japanese_font(size, bold=False):
-    # Use installed system fonts only; never download fonts.
-    bold_paths = ['/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc',
-                  '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'] if bold else []
-    for path in bold_paths + ['/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc',
-                 '/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc',
-                 '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc']:
-        if Path(path).is_file():
-            return ImageFont.truetype(path, size)
-    raise RuntimeError('出典表示に必要な日本語システムフォントが見つかりません')
+    return ImageFont.truetype(find_font('ja_sans_bold' if bold else 'ja_sans'), size)
 
 
 def _label_layout(draw, text, point, size, occupied, font_size, stroke, radius):

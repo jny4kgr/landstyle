@@ -1,6 +1,6 @@
 @page { size: 364mm 257mm; margin: 0; }
 * { box-sizing: border-box; }
-html, body { margin: 0; color: #231f20; font-family: 'Hiragino Mincho ProN', 'YuMincho', serif; }
+html, body { margin: 0; color: #231f20; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'MS PMincho', serif; }
 body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 figure, p, h1 { margin: 0; }
 .cover-sheet { width: 364mm; height: 257mm; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }

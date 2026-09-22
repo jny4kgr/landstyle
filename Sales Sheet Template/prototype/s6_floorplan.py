@@ -33,6 +33,7 @@ import cv2
 import numpy as np
 import pymupdf
 from PIL import Image, ImageDraw, ImageFont
+from platform_paths import find_font, css_font_stack
 
 # ---------------------------------------------------------------- 設定
 S = 4  # ラスタ解像度 px / pt (1/50 図面で 1px ≒ 4.4mm)
@@ -65,8 +66,8 @@ ROOM_MAP: list[tuple[str, str | None, str]] = [
 ]
 KEEP_TEXT = {"UP", "DN", "冷"}  # 図面の文字のうち、そのまま残すもの
 
-FONT_EN = "/System/Library/Fonts/Supplemental/Times New Roman.ttf"
-FONT_JA = "/System/Library/Fonts/ヒラギノ明朝 ProN.ttc"
+FONT_EN = find_font("en_serif")
+FONT_JA = find_font("ja_serif")
 
 MIN_ROOM_M2 = 0.2  # これより小さい閉領域は部屋とみなさない(収納の最小 455×910mm ≒ 0.41㎡ より十分小さい)
 FLOAT_MAXLEN = 12.0  # pt: 部屋の中に浮いている線の成分で、これより小さいもの(破線の1片)は消す
@@ -425,8 +426,7 @@ def svg_text(x, y, text, font, anchor="mm", stroke=0, transform=""):
     lines = text.split("\n")
     step = font.getbbox("A", stroke_width=stroke)[3] + stroke
     top = y - (len(lines) - 1) * step / 2 if anchor[1] == "m" else y
-    family = ('"Hiragino Mincho ProN", serif' if "ヒラギノ" in str(font.path)
-              else '"Times New Roman", serif')
+    family = css_font_stack("ja_serif" if str(font.path) == FONT_JA else "en_serif")
     attrs = f' transform="{escape(transform, quote=True)}"' if transform else ""
     result = []
     for i, line in enumerate(lines):
@@ -665,7 +665,7 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
     masks = _room_masks(rooms, region, crop)
     items, _ = _annotation_plan(annot_path, masks, base.size)
     left, top, right, bottom = building_box
-    font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", 11*S)
+    font = ImageFont.truetype(find_font("ja_sans"), 11*S)
     measure = ImageDraw.Draw(base)
     avoid = [(a-8, b-8, c+8, d+8) for a,b,c,d in label_boxes]
     cars, comments, furniture, arrows = [], [], [], []
@@ -835,7 +835,7 @@ def draw_annotations(base, annot_path, rooms, region, crop, label_boxes, buildin
             x = tx+(width-(metric[2]-metric[0]))/2-metric[0]+ox
             y = ty+i*c["step"]-metric[1]+oy
             draw.text((x,y), line, font=font, fill=LINE_RGB, anchor="ls")
-            svg.append(f'<text x="{x}" y="{y}" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, sans-serif" font-size="{font.size}" fill="{color}">{escape(line)}</text>')
+            svg.append(f'<text x="{x}" y="{y}" font-family="{escape(css_font_stack("ja_sans"), quote=True)}" font-size="{font.size}" fill="{color}">{escape(line)}</text>')
         elements.append('<g data-annot="comment">'+"".join(svg)+'</g>')
     return result, (ox, oy), elements
 

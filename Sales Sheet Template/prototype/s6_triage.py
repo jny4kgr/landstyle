@@ -11,6 +11,9 @@ from pathlib import Path
 
 import pymupdf
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import platform_paths  # noqa: F401  Windows のコンソールで文字が書けずに止まるのを防ぐ
+
 ROOM_WORDS = ("LDK", "洋室", "玄関", "浴室", "UB", "トイレ", "納戸", "洗面", "収納", "物入", "クローゼット", "バルコニー")
 
 
