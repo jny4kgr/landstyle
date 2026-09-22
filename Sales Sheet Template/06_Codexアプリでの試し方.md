@@ -1,52 +1,54 @@
-# 販売図面づくり 手順書（Codex アプリ・Mac）
+# 販売図面づくり 手順書（Codex アプリ・Windows）
 
-AI（Codex）と会話しながら、設計図書の PDF から販売図面（表紙＋中面・B4 横の PDF）を作る試作版です。
+AI（Codex）と会話しながら、設計図書の PDF から販売図面（表紙＋中面・B4 横の PDF）を作る試作版です。Mac の場合は最後の「Mac の場合」を見てください。
 
 ## 1. 最初に1回だけ
 
-1. Notion の `販売図面テンプレート.zip` をダウンロードし、ダブルクリックで展開する（または https://github.com/jny4kgr/landstyle の Code → Download ZIP で取り、`landstyle-main/Sales Sheet Template` を `販売図面テンプレート` という名前で「書類」に置く）
-2. できた `販売図面テンプレート` フォルダを「書類」に移す
-3. **ターミナル**（Launchpad → その他 → ターミナル）を開き、次を貼って Enter（Python を管理する道具 uv を入れる）
+1. Notion の `販売図面テンプレート.zip` をダウンロードする
+2. zip を右クリック →「すべて展開」→ できた `販売図面テンプレート` フォルダを「ドキュメント」に移す
+3. スタートメニューで **PowerShell** を開き、次を貼って Enter（Python を管理する道具 uv を入れる）
 
 ```
-curl -LsSf https://astral.sh/uv/install.sh | sh
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-4. ターミナルを一度閉じて開き直し、次の2行を1行ずつ貼って Enter（数分かかる）
+4. PowerShell を一度閉じて開き直し、次の3行を1行ずつ貼って Enter（数分かかる）
 
 ```
-cd ~/Documents/販売図面テンプレート/prototype
+cd "$HOME\Documents\販売図面テンプレート\prototype"
 ```
 ```
-uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+uv venv --python 3.13 .venv; uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+```
+```
+.venv\Scripts\python.exe platform_paths.py
 ```
 
-   最後に `Installed … packages` と出れば完了。Mac に最初から入っている Python（3.9）では地図と間取り図が動かないので、必ずこの手順で入れる
-5. **Google Chrome** が入っていることを確認する（PDF を作るのに使う）
+   最後の行で `ja_serif:` `ja_sans:` `browser:` などにファイルの場所が表示されれば準備完了。PDF は Chrome が無ければ Windows 標準の Edge で作る。「見つかりません」と出たら、その画面をそのまま小暮に送る
 
 ## 2. 物件ごとに
 
-1. 「書類」に `販売図面` フォルダを作り、その中に `20260921_所沢東新井町3号棟` のような **日付_物件名** のフォルダを作る
+1. 「ドキュメント」に `販売図面` フォルダを作り、その中に `20260921_所沢東新井町3号棟` のような **日付_物件名** のフォルダを作る
 2. その中に `資料` フォルダを作り、設計図書の PDF（仕様書・実行図・電気図・パース・確認済証など）を入れる
 
 ## 3. Codex アプリで作る
 
-1. Codex アプリで **プロジェクトを開く** → `書類 › 販売図面テンプレート` を選ぶ
+1. Codex アプリで **プロジェクトを開く** →「ドキュメント › 販売図面テンプレート」を選ぶ
 2. 次の文を貼って送る（物件フォルダ名と物件の説明は自分のものに直す）
 
 ```
 このフォルダの AGENTS.md の手順で、販売図面を作ってください。
-物件フォルダは ~/Documents/販売図面/20260921_所沢東新井町3号棟 で、資料は「資料」フォルダに入れてあります。
+物件フォルダは ドキュメント\販売図面\20260921_所沢東新井町3号棟 で、資料は「資料」フォルダに入れてあります。
 所沢市東新井町の新築分譲住宅・全3棟のうち3号棟（他の2棟は売れました）です。
-Python は prototype/.venv/bin/python を使ってください。
-地図の取得（make_map.py）と PDF 化（Chrome）はサンドボックスの中では動かないので、その2つは承認を求めてサンドボックスの外で実行してください。
+Python は prototype\.venv\Scripts\python.exe を使ってください。
+地図の取得（make_map.py）と PDF 化（Chrome または Edge）はサンドボックスの中では動かないことがあるので、その2つは承認を求めてサンドボックスの外で実行してください。
 まずラフを出して、足りない情報を1問ずつ質問してください。
 ```
 
-3. 「サンドボックスの外で実行してよいか」と聞かれたら **承認** する（地図の取得と PDF 化の2回）。拒否すると PDF ができない
+3. 「サンドボックスの外で実行してよいか」「このコマンドを実行してよいか」と聞かれたら **承認** する（地図の取得と PDF 化）。拒否すると PDF ができない
 4. 質問（価格・地番・私道負担・有効期限・引渡し時期・駅までの距離など）に1つずつ答える。分からない項目は「仮で ◯◯」と答えてよい
 5. キャッチコピー・特長ラベルの候補が番号つきで出たら、番号で選ぶ
-6. 「仕上げて」と送ると、物件フォルダの `out/<日付>/` に `naka.pdf`（中面）と `cover.pdf`（表紙）ができる
+6. 「仕上げて」と送ると、物件フォルダの `out\<日付>\` に `naka.pdf`（中面）と `cover.pdf`（表紙）ができる
 
 価格が変わったら「価格を◯◯万円に変えて出し直して」と頼む。前の版も残る。
 
@@ -61,6 +63,23 @@ Python は prototype/.venv/bin/python を使ってください。
 
 ## 注意
 
-- 物件の資料と出力は「書類 › 販売図面」に置き、このフォルダ（販売図面テンプレート）の中には入れない
+- 物件の資料と出力は「ドキュメント › 販売図面」に置き、`販売図面テンプレート` フォルダの中には入れない
 - 最後の確認は必ず人が行う
 - まだ作れないもの: スキャン画像しかない設計図書からの間取り図。家具は部屋によって入らないことがある
+- Windows の実機での確認はこれから。表示されるフォントが Mac で作った見本と少し違う（游明朝・游ゴシックになる）
+
+## Mac の場合
+
+1 の手順だけ次に置き換える（ターミナルで実行）。
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+```
+cd ~/Documents/販売図面テンプレート/prototype
+```
+```
+uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+```
+
+Codex に送る文の Python は `prototype/.venv/bin/python`、物件フォルダは `~/Documents/販売図面/…` にする。Mac に最初から入っている Python（3.9）では地図と間取り図が動かないので、必ず uv で入れる。

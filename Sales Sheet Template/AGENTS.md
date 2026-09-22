@@ -97,7 +97,7 @@ python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --s
 
 ## 地図・区画図・表紙の作成手順（追加）
 
-Python は `prototype/.venv/bin/python` を使います（既存の Pillow・OpenCV・NumPy が必要です）。実物件のデータと出力は引き続きリポジトリ外へ置いてください。
+Python は macOS は `prototype/.venv/bin/python`、Windows は `prototype\.venv\Scripts\python.exe` を使います（既存の Pillow・OpenCV・NumPy が必要です）。実物件のデータと出力は引き続きリポジトリ外へ置いてください。
 
 ### 手順 3.5: 地図と区画図
 

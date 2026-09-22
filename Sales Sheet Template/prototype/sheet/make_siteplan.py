@@ -8,6 +8,8 @@ import json
 import math
 from decimal import Decimal, ROUND_DOWN
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from platform_paths import css_font_stack
 
 
 def polygon_points(value):
@@ -208,7 +210,7 @@ def render_siteplan(data, rotation='auto', frame_mm=(60, 45)):
         root=(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{" ".join(f"{n:.6f}" for n in view)}" '
               f'width="{frame_mm[0]}mm" height="{frame_mm[1]}mm" preserveAspectRatio="xMidYMid meet" '
               f'data-rotation="{degrees}" data-frame-mm="{frame_mm[0]} {frame_mm[1]}" '
-              'font-family="Hiragino Kaku Gothic ProN, sans-serif" fill="#222">')
+              f'font-family="{html.escape(css_font_stack("ja_sans"), quote=True)}" fill="#222">')
         return '\n'.join([root,*svg,'</svg>']),needed
 
     options=[candidate(n) for n in ([0,90] if str(rotation)=='auto' else [int(rotation)])]

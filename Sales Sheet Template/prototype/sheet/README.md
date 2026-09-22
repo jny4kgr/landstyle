@@ -4,7 +4,7 @@
 
 ## 実行
 
-Python 3.10 以上。追加 Python パッケージは不要。PDF は macOS の `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` を使う。
+Python 3.10 以上。追加 Python パッケージは不要。PDF は OS ごとに Chrome・Edge・Chromium を探索して使う。
 
 ```sh
 python3 build_sheet.py --data data/example_property.json --out /private/tmp/sheet-example --stage final
@@ -126,7 +126,7 @@ Chrome は sandbox 内で exit=-6。通常実行の架空 final と浜崎 rough 
 
 ## 地図・区画図・表紙の作成手順（追加）
 
-以下は上記の「未対応」の記述に対する更新です。地図・区画図・設備アイコン・表紙は作成できます。Python は `prototype/.venv/bin/python` を使います（既存の Pillow・OpenCV・NumPy が必要です）。実物件のデータと出力は引き続きリポジトリ外へ置いてください。
+以下は上記の「未対応」の記述に対する更新です。地図・区画図・設備アイコン・表紙は作成できます。Python は macOS では `prototype/.venv/bin/python`、Windows では `prototype\.venv\Scripts\python.exe` を使います（既存の Pillow・OpenCV・NumPy が必要です）。実物件のデータと出力は引き続きリポジトリ外へ置いてください。
 
 ### 手順 3.5: 地図と区画図
 
@@ -183,3 +183,21 @@ python "$S/sheet/build_sheet.py" --data "$P/property.json" --out "$P/out/<日付
 ### 手順 5: 家具・家事動線の書き足し
 
 家具と家事動線の矢印は、営業が希望したときだけ `--annot` で入れます。`prototype/annot_example.json` の furniture / arrow を参考に、部屋名・種類・位置・回転、矢印の折れ点と色を指定してください。配置できない家具は警告して省略されます。
+
+
+## Windows での動作
+
+Python と `prototype/requirements.txt` の依存を入れた環境で実行します。
+`prototype` ディレクトリで `python platform_paths.py` を実行すると、この PC で見つかったフォントとブラウザを表示します。`python platform_paths.py --self-test` は実機のファイルに依存しない模擬テストです。
+
+フォントは `%WINDIR%\Fonts`（既定 `C:\Windows\Fonts`）から、明朝は yumin.ttf → msmincho.ttc、ゴシックは YuGothM.ttc → YuGothR.ttc → meiryo.ttc → msgothic.ttc、太字は YuGothB.ttc → meiryob.ttc、英字は times.ttf の順に探します。macOS は従来のヒラギノと Times New Roman を優先し、Linux は Noto CJK などを探します。
+
+ブラウザは `%ProgramFiles%`・`%ProgramFiles(x86)%`・`%LocalAppData%` の Chrome を順に探し、次に同じ場所の Edge を探します。macOS は Chrome → Edge → Chromium、Linux は PATH 上の google-chrome → chromium → microsoft-edge の順です。PDF 化は Chrome と Edge 共通の `--headless=new --print-to-pdf` を使用します。
+
+見つからない場合は、エラーに探索したパスを表示します。環境変数 `SHEET_FONT_JA_SERIF`、`SHEET_FONT_JA_SANS`、`SHEET_FONT_JA_SANS_BOLD`、`SHEET_FONT_EN_SERIF` にフォントファイルのパス、`SHEET_BROWSER` にブラウザ実行ファイルのパスを指定できます。これらは OS の候補より優先し、指定先が存在しない場合は通常の候補も探します。PowerShell の指定例:
+
+```powershell
+$env:SHEET_BROWSER = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+$env:SHEET_FONT_JA_SERIF = "C:\Windows\Fonts\yumin.ttf"
+python platform_paths.py
+```
