@@ -183,3 +183,11 @@ python "$S/sheet/build_sheet.py" --data "$P/property.json" --out "$P/out/<日付
 ### 手順 5: 家具・家事動線の書き足し
 
 家具と家事動線の矢印は、営業が希望したときだけ `--annot` で入れます。`prototype/annot_example.json` の furniture / arrow を参考に、部屋名・種類・位置・回転、矢印の折れ点と色を指定してください。配置できない家具は警告して省略されます。
+
+## 中面の帯・写真・ロゴ・手書き価格
+
+- `banner`: 任意の帯文（文字列）。未指定時は single の販売中・商談中の棟がある場合に全棟数から自動生成。済があれば残り数を追記。全棟済・土地のみ・mixed は自動帯なし。指定文・自動文とも禁止語点検の対象。
+- `interior_photos`: `[{"path":"室内.jpg","caption":"室内写真"}]`、最大2枚。single の概要右側に表示。mixed では省略し warning。空配列なら空枠なし。
+- `series_logo_path`: property.json 基準のシリーズロゴ画像。省略時は従来の文字。
+- `data/company.json` の任意キー `logo_path`: **company.json のディレクトリ基準**の会社ロゴ。中面・表紙裏の会社名を高さ10mm、最大幅60mmの画像枠へ変更し、表紙ロゴにも使用。未指定時は従来の文字・標準ロゴ。実ロゴ未受領のため設定例を実データには追加しない。
+- `--hide-price`: 現地手差し用。棟の価格欄は同じ高さの「価格」空枠にし、土地・参考建物・合計・追加費用と税込注記も非表示。B02 の価格欠落・null のみ免除し、不正値は error のまま。`--cover` と併用でき、report.md 冒頭に非表示を明記。
