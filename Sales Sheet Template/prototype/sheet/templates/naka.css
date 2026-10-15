@@ -28,6 +28,21 @@ aside h2 { font-size: 16pt; font-weight: normal; border-bottom: 1px solid white;
 .station small { font-size: 8pt; }
 .station b { font-size: 20pt; }
 .station strong { display: block; font-size: 28pt; }
+/* Two stations share 36mm; remove the inherited 12pt inline strut. */
+.stations[data-count="2"] .station { font-size: 7pt; line-height: 1; }
+.stations[data-count="2"] .station small { font-size: 7pt; }
+.stations[data-count="2"] .station b { font-size: 16pt; }
+.stations[data-count="2"] .station strong { font-size: 18pt; }
+/* Three or more: pair route/distance and station/walk in two rows. */
+.stations:not([data-count="1"]):not([data-count="2"]) .station {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto; align-content: center; font-size: 6.5pt;
+}
+.stations:not([data-count="1"]):not([data-count="2"]) .station small { font-size: 6.5pt; }
+.stations:not([data-count="1"]):not([data-count="2"]) .station b { font-size: 13pt; }
+.stations:not([data-count="1"]):not([data-count="2"]) .station strong { font-size: 14pt; grid-area: 2 / 2; }
+.stations:not([data-count="1"]):not([data-count="2"]) .station > div { grid-area: 2 / 1; }
+.stations:not([data-count="1"]):not([data-count="2"]) .station > small:last-child { grid-area: 1 / 2; }
 .map { background: white; color: #231f20; width: 100%; aspect-ratio: 3 / 2; }
 .map img { object-fit: cover; object-position: center; }
 .map { position: relative; overflow: hidden; }

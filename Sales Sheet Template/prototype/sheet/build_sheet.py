@@ -145,7 +145,7 @@ def main():
     facility_count=max(1,len(d.get('facilities',[])))
     life_font=max(6.8,7.3-(facility_count-11)*0.1)
     life_height=max(32,min(92,6+facility_count*6))*7.3/6.3
-    sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+(asset(d['series_logo_path'],'シリーズロゴ','series_logo_path') if d.get('series_logo_path') else esc(d.get('series','Lancasa')))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations">'
+    sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+(asset(d['series_logo_path'],'シリーズロゴ','series_logo_path') if d.get('series_logo_path') else esc(d.get('series','Lancasa')))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations" data-count="'+str(len(d.get('access',[])))+'">'
     for i,a in enumerate(d.get('access',[])):
         sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+('徒歩'+str(minutes(a['distance_m']))+'分' if number(a.get('distance_m')) is not None and number(a['distance_m'])>0 else missing('距離未入力'))+'</strong>'+('<small>（約'+esc(a['distance_m'])+'m）</small>' if number(a.get('distance_m')) is not None and number(a['distance_m'])>0 else '')+'</div>'
     map_source = d.get('map_source')
@@ -272,6 +272,9 @@ def main():
             notes.append(('N7',esc(b.get('name',''))+free+('' if args.hide_price else '参考建物価格のほかに'+fees+'が必要です。')))
     overview+='<div class="notes">'+''.join('<span data-note="'+id+'">※'+text+'</span>' for id,text in notes)+'</div>'
     interior_photos=d.get('interior_photos') or []
+    for i,photo in enumerate(interior_photos):
+        if empty(photo.get('caption')):
+            issue('N8',f'interior_photos.{i}.caption','画像キャプションがありません。','画像の種類と必要な撮影日を教えていただけますか？')
     if interior_photos and mixed:
         issue('INTERIOR_MIXED','interior_photos','mixed では室内写真を表示しません。','single の紙面で使用してください。','warning')
     if interior_photos and not mixed:
