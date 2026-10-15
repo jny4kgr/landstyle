@@ -48,3 +48,6 @@ footer { position: absolute; left: 7mm; right: 7mm; bottom: 7mm; border-top: .5m
 .transaction { font-size: 6pt; }
 .transaction br { display: none; }
 .transaction small { padding-left: 2mm; }
+
+.company-logo { width: 60mm; height: 10mm; }
+.company-logo img { height: 10mm; width: auto; max-width: 60mm; object-position: left; }

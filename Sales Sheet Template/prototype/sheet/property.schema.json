@@ -1204,6 +1204,33 @@
         null
       ],
       "description": "地図の出どころ（S11）。gsi＝国土地理院（既定。紙面に出典を表示する）、other＝自社で用意した地図（出典表示は画像側で行う）"
+    },
+    "banner": {
+      "type": "string",
+      "description": "中面の赤帯。省略時は single の販売状況から自動生成"
+    },
+    "series_logo_path": {
+      "type": "string",
+      "description": "シリーズロゴ。property.json 基準"
+    },
+    "interior_photos": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "caption"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [
