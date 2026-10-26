@@ -1,0 +1,4 @@
+# 外観パースのPDF変換・部分編集・輪郭確認に使用
+pymupdf
+pillow
+numpy
