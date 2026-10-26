@@ -76,6 +76,8 @@ python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --s
 - 選ばれたものを `catch`・`subcopy`・棟の `features` に移す。間取りコメントは `annot_<階>.json` に書き（`prototype/annot_example.json` の形）、手順 2 の `--annot` を付けて間取り図を作り直す
 
 ### 手順 6: 仕上げ
+
+現地手差し用（価格を手書き）は `--hide-price`。
 ```bash
 python $S/sheet/build_sheet.py --data $P/property.json --out $P/out/<日付> --stage final
 ```

@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 import time
 from decimal import Decimal
-from checks import COMMON, BUILDING, LAND, candidate_report, check, empty, number, prose_text, tsubo, minutes
+from checks import _prose_checks, COMMON, BUILDING, LAND, candidate_report, check, empty, number, prose_text, tsubo, minutes
 
 ROOT = Path(__file__).resolve().parent
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -85,6 +85,7 @@ def main():
     parser.add_argument('--stage',choices=['rough','final'],required=True)
     parser.add_argument('--no-pdf',action='store_true')
     parser.add_argument('--cover',action='store_true')
+    parser.add_argument('--hide-price',action='store_true',help='現地手差し用に金額を非表示')
     parser.add_argument('--allow-missing-images',action='store_true',help='final でも画像の「未設定」枠を許す（画像を持たない架空データの検証用）')
     args=parser.parse_args()
     d=json.loads(args.data.read_text(encoding='utf-8'))
@@ -93,7 +94,20 @@ def main():
     # Never leave a previous successful PDF or HTML behind after a rejected revision.
     for filename in ['naka.pdf','naka.html','cover.pdf','cover.html','siteplan.svg']:
         (args.out/filename).unlink(missing_ok=True)
+    buildings=d.get('buildings',[]); lands=d.get('lands',[])
+    active_b=[(i,b) for i,b in enumerate(buildings) if b.get('status')!='済']
+    active_l=[(i,b) for i,b in enumerate(lands) if b.get('status')!='済']
+    mixed=bool(lands or len(active_b)>1)
+    banner=d.get('banner','')
+    if 'banner' not in d and buildings and active_b and not mixed:
+        banner=f"{d.get('city','')}{d.get('area','')}・新築分譲住宅・全{len(buildings)}棟"
+        if len(active_b)<len(buildings):
+            banner+='・好評につき最終1棟です！' if len(active_b)==1 else f'・好評につき残り{len(active_b)}棟'
     items=check(d, stage=args.stage)
+    items.extend(_prose_checks(d,banner,'banner','banner',require_basis=False)[0])
+    if args.hide_price:
+        missing_prices={f'buildings.{i}.price' for i,b in active_b if b.get('price') is None}
+        items=[x for x in items if not (x['id']=='B02' and x['path'] in missing_prices)]
     def issue(id,path,message,question,level='error'):
         items.append(dict(id=id,path=path,level=level,message=message,question=question))
     def missing(label): return '' if args.stage=='final' else '<span class="missing">要入力：'+esc(label)+'</span>'  # final では空欄を印字しない
@@ -122,9 +136,6 @@ def main():
             payload=readable_annotations(payload,*frame_mm)
         uri='data:'+mime+';base64,'+base64.b64encode(payload).decode('ascii')
         return f'<img src="{uri}" alt="{esc(label)}">'
-    buildings=d.get('buildings',[]); lands=d.get('lands',[])
-    active_b=[(i,b) for i,b in enumerate(buildings) if b.get('status')!='済']
-    active_l=[(i,b) for i,b in enumerate(lands) if b.get('status')!='済']
     total=f'新築分譲住宅／全{len(buildings)}棟'
     if lands: total+=f'・建築条件付売地／全{len(lands)}区画'
     sale=f'今回販売 {sum(b.get("status")=="販売中" for b in buildings)}棟'
@@ -132,11 +143,11 @@ def main():
     area_units=sum(1 if unicodedata.east_asian_width(ch) in 'WF' else 0.6 for ch in str(d.get('area','')))
     area_font=max(12,min(27,64*72/25.4/max(1,area_units)))
     facility_count=max(1,len(d.get('facilities',[])))
-    life_font=max(6,6.5-max(0,facility_count-11)*0.1)
-    life_height=max(32,min(92,6+facility_count*6))
-    sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+esc(d.get('series','Lancasa'))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations">'
+    life_font=max(6.8,7.3-(facility_count-11)*0.1)
+    life_height=max(32,min(92,6+facility_count*6))*7.3/6.3
+    sidebar=f'<div class="brand" style="--area-font:{area_font:.2f}pt">'+'<div class="series">'+(asset(d['series_logo_path'],'シリーズロゴ','series_logo_path') if d.get('series_logo_path') else esc(d.get('series','Lancasa')))+'</div><small>〜ランカーザ〜</small><div>'+value(d.get('city'),'市名')+'</div><h1>'+value(d.get('area'),'エリア名')+'</h1><small>'+esc(d.get('roman',''))+'</small></div><p class="counts">'+total+'<br>'+sale+'</p><section class="access"><h2>Access</h2><div class="stations" data-count="'+str(len(d.get('access',[])))+'">'
     for i,a in enumerate(d.get('access',[])):
-        sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+walk(a.get('distance_m'))+'</strong></div>'
+        sidebar+='<div class="station"><small>'+field(a,'line','路線',f'access.{i}')+'</small><div>「<b>'+field(a,'station','駅名',f'access.{i}')+'</b>」駅</div><strong>'+('徒歩'+str(minutes(a['distance_m']))+'分' if number(a.get('distance_m')) is not None and number(a['distance_m'])>0 else missing('距離未入力'))+'</strong>'+('<small>（約'+esc(a['distance_m'])+'m）</small>' if number(a.get('distance_m')) is not None and number(a['distance_m'])>0 else '')+'</div>'
     map_source = d.get('map_source')
     if not map_source and d.get('map_path'):
         map_file = Path(d['map_path']).expanduser()
@@ -177,24 +188,29 @@ def main():
             if not any(x['id']=='SITE_PLAN' and x['level']=='error' for x in items):
                 issue('SITE_PLAN_LAYOUT','site_plan',str(exc),'区画図の座標・文字量と表示枠を確認してください。')
     division='<div class="division"><h3>Division'+(' 建築条件付売地' if lands else '')+'</h3>'+asset(division_path,'区画図','division_path')+'</div>'
-    def plans(obj,p,frame_mm=(80,39),selection=None):
+    def plans(obj,p,frame_mm=(80,35),selection=None):
         fs=list(enumerate(obj.get('floorplans',[])))
         if selection is not None:
             fs=fs[selection]
         if not fs: return '<div class="floorplans">'+asset(None,'間取り図',p)+'</div>'
-        # Figures stack in this cell, with 2mm gaps and a 3mm caption each.
-        frame=(frame_mm[0],(frame_mm[1]+3-2*(len(fs)-1))/len(fs)-3)
+        # Figures stack in this cell, with 1.5mm gaps and a 3mm caption each.
+        frame=(frame_mm[0],(frame_mm[1]+3-1.5*(len(fs)-1))/len(fs)-3)
         return '<div class="floorplans">'+''.join('<figure>'+asset(f.get('path'),f.get('label','間取り図'),p+f'.floorplans.{j}.path',frame)+'<figcaption>'+esc(f.get('label',''))+'</figcaption></figure>' for j,f in fs)+'</div>'
-    mixed=bool(lands or len(active_b)>1)
+    # CSS: 354 - 77 - 2 - 58 - 1.5 = 215.5mm cards width.
+    card_count=max(1,len(active_b)+bool(active_l))
+    mixed_card_height=(100.5-1.5*(card_count-1))/card_count
+    mixed_plan_frame=((215.5-1)/2.8,mixed_card_height-7-3)
+    land_width=(215.5-1.5*max(0,len(active_l)-1))/max(1,len(active_l))-2-2*25.4/96
+    land_frame=(land_width,mixed_card_height-2-2*25.4/96-32-1-3)
     cards=''
     for i,b in active_b:
         p=f'buildings.{i}'
-        cards+='<article class="building"><div class="price-panel"><h2>◀ Room Plan ▶</h2><div class="unit-name">'+field(b,'name','号棟',p)+'</div><div class="price"><small>販売価格</small><b>'+amount(b.get('price'))+'</b><span>〈税込〉<br>万円</span></div><strong class="layout">'+field(b,'layout','間取り',p)+'</strong><p>土地面積／'+area(b.get('land_area'))+'<br>建物面積／'+area(b.get('building_area'))
+        cards+='<article class="building"><div class="price-panel"><h2>◀ Room Plan ▶</h2><div class="unit-name">'+field(b,'name','号棟',p)+'</div>'+('<div class="price price-blank">価格</div>' if args.hide_price else '<div class="price"><small>販売価格</small><b>'+amount(b.get('price'))+'</b><span>〈税込〉<br>万円</span></div>')+'<strong class="layout">'+field(b,'layout','間取り',p)+'</strong><p>土地面積／'+area(b.get('land_area'))+'<br>建物面積／'+area(b.get('building_area'))
         if b.get('has_garage'): cards+='<br>'+value(f'※車庫部分{b.get("garage_area", "未入力")}㎡含む' if b.get('garage_included') else None,'車庫面積・算入',p+'.garage_area')
         cards+='<br>建築確認番号／'+field(b,'confirmation','建築確認番号',p)+'</p><div class="features">'+''.join('<span class="feature-badge">'+value(prose_text(t),'特長ラベル',p+'.features')+'</span>' for t in (b.get('features') or [])[:3])+'</div>'
-        cards+='</div><div class="plan-one">'+plans(b,p,(75,45) if mixed else (80,39),None if mixed else slice(0,1))+'</div>'
+        cards+='</div><div class="plan-one">'+plans(b,p,mixed_plan_frame if mixed else (80,35),None if mixed else slice(0,1))+'</div>'
         if not mixed:
-            cards+='<div class="plan-rest">'+plans(b,p,(131,109),slice(1,None))+'</div>'
+            cards+='<div class="plan-rest">'+plans(b,p,(134,96.5),slice(1,None))+'</div>'
         cards+='<div class="plan-extras">'+''.join('<span class="feature-badge">'+value(prose_text(t),'特長ラベル',p+'.features')+'</span>' for t in (b.get('features') or [])[3:])
         if b.get('comments'):
             cards+='<div class="comments">'+''.join('<span>'+value(prose_text(t),'コメント',p+'.comments')+'</span>' for t in b['comments'])+'</div>'
@@ -203,12 +219,14 @@ def main():
         cards+='<section class="land-cards">'
         for i,b in active_l:
             p=f'lands.{i}'; ref=b.get('reference_plan')
-            cards+='<article><h3>'+field(b,'name','区画番号',p)+' 建築条件付売地</h3><p>土地価格 <b>'+amount(b.get('price'))+'万円</b>（非課税）<br>土地面積／'+area(b.get('land_area'))+'</p>'
+            cards+='<article><h3>'+field(b,'name','区画番号',p)+' 建築条件付売地</h3><p>'+('' if args.hide_price else '土地価格 <b>'+amount(b.get('price'))+'万円</b>（非課税）<br>')+'土地面積／'+area(b.get('land_area'))+'</p>'
             if ref is not None:
                 rp=p+'.reference_plan'
-                cards+='<h3>'+esc(b.get('name',''))+' Reference Plan</h3><p>参考建物価格 <b>'+amount(ref.get('price'))+'万円〈税込〉</b><br>建物面積／'+area(ref.get('building_area'))+'<br>土地＋参考建物価格 <b>'
-                total_price=number(b.get('price'))+number(ref.get('price')) if number(b.get('price')) is not None and number(ref.get('price')) is not None else None
-                cards+=amount(total_price)+'万円</b><br>（土地非課税・建物税込）</p>'+plans(ref,rp)
+                cards+='<h3>'+esc(b.get('name',''))+' Reference Plan</h3><p>'
+                if not args.hide_price:
+                    total_price=number(b.get('price'))+number(ref.get('price')) if number(b.get('price')) is not None and number(ref.get('price')) is not None else None
+                    cards+='参考建物価格 <b>'+amount(ref.get('price'))+'万円〈税込〉</b><br>土地＋参考建物価格 <b>'+amount(total_price)+'万円</b><br>（土地非課税・建物税込）<br>'
+                cards+='建物面積／'+area(ref.get('building_area'))+'</p>'+plans(ref,rp,land_frame)
             cards+='</article>'
         cards+='</section>'
     c=d.get('common',{})
@@ -221,13 +239,14 @@ def main():
         overview+=' <span>●'+label+'／'+value(v,label,'common.'+k)+'</span>'
     overview+=' ●交通／'+'・'.join(esc(a.get('line','')+'「'+a.get('station','')+'」駅')+walk(a.get('distance_m')) for a in d.get('access',[]))
     overview+=' ●接道／'+'・'.join(esc(r.get('direction',''))+' 約'+value(r.get('width_m'),'道路幅員',f'common.roads.{i}.width_m')+'m '+esc(r.get('type','')) for i,r in enumerate(c.get('roads',[])))
-    overview+=' ●総棟数・区画数／'+total+' ●販売数／'+sale+' ●価格／別記'
+    overview+=' ●総棟数・区画数／'+total+' ●販売数／'+sale+('' if args.hide_price else ' ●価格／別記')
     if c.get('rights')=='借地権':
-        for k,label in [('lease_type','借地権の種類'),('lease_term','借地期間'),('ground_rent','地代')]: overview+=' ●'+label+'／'+field(c,k,label,'common')
+        for k,label in [('lease_type','借地権の種類'),('lease_term','借地期間'),('ground_rent','地代')]: overview+=' ●'+label+'／'+field(c,k,label,'common') if not (args.hide_price and k=='ground_rent') else ''
     overview+='</p>'
     def group(rows,fields,kind,title):
         out='<b>'+title+'</b><p>'
         for id,key,label in fields:
+            if args.hide_price and key=='price': continue
             vals=[b.get(key) for i,b in rows]
             if not vals: continue
             if key in {'price','land_area','building_area','confirmation','layout','name'}: result='別記'
@@ -250,8 +269,22 @@ def main():
         if ref is not None:
             fees='・'.join(esc(f.get('label',''))+' '+amount(f.get('amount'))+'万円' for f in ref.get('extra_costs',[])) or missing('追加費用')
             free='参考プランは一例です。採用するかどうかは自由にお決め頂けます。' if ref.get('adoption_optional') is True else missing('参考プランの自由採用確認')
-            notes.append(('N7',esc(b.get('name',''))+free+'参考建物価格のほかに'+fees+'が必要です。'))
+            notes.append(('N7',esc(b.get('name',''))+free+('' if args.hide_price else '参考建物価格のほかに'+fees+'が必要です。')))
     overview+='<div class="notes">'+''.join('<span data-note="'+id+'">※'+text+'</span>' for id,text in notes)+'</div>'
+    interior_photos=d.get('interior_photos') or []
+    for i,photo in enumerate(interior_photos):
+        if empty(photo.get('caption')):
+            issue('N8',f'interior_photos.{i}.caption','画像キャプションがありません。','画像の種類と必要な撮影日を教えていただけますか？')
+    if interior_photos and mixed:
+        issue('INTERIOR_MIXED','interior_photos','mixed では室内写真を表示しません。','single の紙面で使用してください。','warning')
+    if interior_photos and not mixed:
+        interior=''.join('<figure>'+asset(photo.get('path'),'室内写真',f'interior_photos.{i}.path')+'<figcaption>'+esc(photo.get('caption',''))+'</figcaption></figure>' for i,photo in enumerate(interior_photos[:2]))
+        overview='<div class="overview-copy">'+overview+'</div><div class="interior">'+interior+'</div>'
+    company_logo=None
+    if company.get('logo_path'):
+        logo_path=Path(company['logo_path']).expanduser()
+        if not logo_path.is_absolute(): logo_path=ROOT/'data'/logo_path
+        company_logo=asset(str(logo_path),'会社ロゴ','company.logo_path')
     display_equipment=list(dict.fromkeys(d.get('equipment',[])+[e for _, b in active_b for e in b.get('equipment',[])]))
     icon_rules=json.loads((ROOT/'templates/icons/icons.json').read_text(encoding='utf-8'))
     def equipment_badge(label):
@@ -260,8 +293,10 @@ def main():
             return '<span class="text-badge">'+esc(label)+'</span>'
         svg=(ROOT/'templates/icons'/rule['file']).read_text(encoding='utf-8')
         return '<div class="equipment-icon">'+svg+'<span>'+esc(label)+'</span></div>'
-    equipment='<div class="standard">標準設備・仕様<br><strong>安心な快適な<br>住まいの創造</strong></div><div class="warranties">'+''.join('<div>'+esc(w)+'</div>' for w in d.get('warranties',[]))+'</div><div class="badges">'+''.join(equipment_badge(e) for e in display_equipment)+'</div>'
-    footer='<div class="licenses">'+esc(' ／ '.join(company['licenses']))+'</div><div class="company-row"><div class="company-name"><small>LAND STYLE</small><b>'+esc(company['name'])+'</b><small>'+esc(company['address'])+'</small></div><div class="web"><b>インターネットでラクラク検索！<br>最新情報を常時公開中！</b><strong>'+esc(company['url'])+'</strong></div><div class="contact"><strong>TEL '+esc(company['tel'])+'</strong><small>受付時間 '+esc(company['hours'])+'（定休日 '+esc(company['closed'])+'）</small></div><div class="fax">FAX '+esc(company['fax'])+'<b>営業社員 募集中！</b><small>'+esc(company['email'])+'</small></div><div class="transaction">取引態様<br><b>'+esc(d.get('transaction',company['transaction']))+'</b><small>手数料'+esc(d.get('commission',company['commission']))+'</small></div></div>'
+    equipment='<div class="standard">標準設備・仕様<br><strong>安心な快適な<br>住まいの創造</strong></div><div class="warranties">'+''.join('<div>'+esc(re.sub(r'（[^）]*(?:円|税込|税別|非課税)[^）]*）','',w) if args.hide_price else w)+'</div>' for w in d.get('warranties',[]))+'</div><div class="badges">'+''.join(equipment_badge(e) for e in display_equipment)+'</div>'
+    footer='<div class="licenses">'+esc(' ／ '.join(company['licenses']))+'</div><div class="company-row"><div class="company-name"><small>LAND STYLE</small><b>'+esc(company['name'])+'</b><small>'+esc(company['address'])+'</small></div><div class="web"><b>インターネットでラクラク検索！<br>最新情報を常時公開中！</b><strong>'+esc(company['url'])+'</strong></div><div class="contact"><strong>TEL '+esc(company['tel'])+'</strong><small>受付時間 '+esc(company['hours'])+'（定休日 '+esc(company['closed'])+'）</small></div><div class="fax">FAX '+esc(company['fax'])+'<b>営業社員 募集中！</b><small>'+esc(company['email'])+'</small></div><div class="transaction">取引態様<br><b>'+esc(d.get('transaction',company['transaction']))+'</b><small>手数料'+('' if args.hide_price else esc(d.get('commission',company['commission'])))+'</small></div></div>'
+    if company_logo:
+        footer=re.sub(r'<div class="company-name">.*?</div>', '<div class="company-name company-logo">'+company_logo+'</div>', footer, count=1)
     cover_html=None
     if args.cover:
         import cv2
@@ -295,7 +330,7 @@ def main():
             company_map=Path(company['access_map_path']).expanduser()
             if not company_map.is_absolute(): company_map=ROOT/'data'/company_map
             access_map='<figure class="company-map">'+asset(str(company_map),'会社への案内図','company.access_map_path')+'<figcaption>'+esc(company.get('access_map_caption',''))+'</figcaption></figure>'
-        logo=asset(str(ROOT/'data/assets/site-logo.svg'),'LAND STYLE','company.logo')
+        logo=company_logo or asset(str(ROOT/'data/assets/site-logo.svg'),'LAND STYLE','company.logo')
         cover_html=(ROOT/'templates/cover.html.j2').read_text(encoding='utf-8')
         cover_values={'css':(ROOT/'templates/cover.css').read_text(encoding='utf-8'),
                       'logo':logo,'photos':photos,'hero':hero_html,'qrs':qrs,'access_map':access_map,
@@ -307,6 +342,7 @@ def main():
         result=dict(stage=args.stage,pdf_status=pdf_status,items=items,counts={lv:sum(x['level']==lv for x in items) for lv in ['error','warning']},candidates=[{k:v for k,v in x.items() if k!='items'} for x in candidates])
         (args.out/'report.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
         md=f'# 点検レポート\n\n段階: {args.stage} / PDF: {pdf_status}\n\nerror: {result["counts"]["error"]}, warning: {result["counts"]["warning"]}\n\n'
+        if args.hide_price: md='価格は非表示（--hide-price）\n\n'+md
         md+='\n'.join(f'- [{x["level"]}] {x["id"]} ({x["path"]}) {x["message"]}\n  逆質問: {x["question"]}' for x in items)
         md+='\n\n## 文章の候補\n\n'
         md+='| 番号 | 種類 | 本文 | 根拠 | 禁止語 | 数値 | 文字数 |\n|---:|---|---|---|---|---|---|\n'
@@ -318,9 +354,9 @@ def main():
         report('blocked'); print('点検 error のため出力停止。report.json / report.md: '+str(args.out.resolve())); return 2
     review=''
     if args.stage=='rough' and any(x['level']=='error' for x in items):
-        review='<div class="review">ラフ・要確認：'+' ／ '.join(esc(x['id']+' '+x['message']) for x in items if x['level']=='error')+'</div>'
+        review='<div class="review">ラフ・要確認：'+esc(' ／ '.join(dict.fromkeys(x['id'] for x in items if x['level']=='error'))) + '（詳細・逆質問は report.md）</div>'
     template=(ROOT/'templates/naka.html.j2').read_text(encoding='utf-8')
-    replacements={'css':(ROOT/'templates/naka.css').read_text(encoding='utf-8'),'sidebar':sidebar,'sidebar_style':f'--life-height:{life_height}mm;--life-count:{facility_count};--life-font:{life_font}pt','title':title,'hero':hero_html,'division':division,'cards':cards,'overview':overview,'equipment':equipment,'footer':footer,'review':review,'mode':'mixed' if lands or len(active_b)>1 else 'single'}
+    replacements={'css':(ROOT/'templates/naka.css').read_text(encoding='utf-8'),'banner':'<div class="banner">'+esc(banner)+'</div>' if banner else '', 'banner_mode':'' if banner else 'no-banner','photo_mode':'has-interior' if interior_photos and not mixed else '', 'card_count':str(card_count),'sidebar':sidebar,'sidebar_style':f'--life-height:{life_height}mm;--life-count:{facility_count};--life-font:{life_font}pt','title':title,'hero':hero_html,'division':division,'cards':cards,'overview':overview,'equipment':equipment,'footer':footer,'review':review,'mode':'mixed' if lands or len(active_b)>1 else 'single'}
     for key,v in replacements.items(): template=template.replace('{{ '+key+' }}',v)
     (args.out/'naka.html').write_text(template,encoding='utf-8')
     if args.stage=='final' and '要入力' in template:  # 安全装置: 仕上げに要入力の文字を残さない

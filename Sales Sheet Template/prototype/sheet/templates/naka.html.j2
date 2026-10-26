@@ -2,9 +2,10 @@
 <html lang="ja">
 <head><meta charset="utf-8"><title>販売図面 中面</title><style>{{ css }}</style></head>
 <body>
-<main class="sheet {{ mode }}">
+<main class="sheet {{ mode }} {{ banner_mode }} {{ photo_mode }}">
   <aside style="{{ sidebar_style }}">{{ sidebar }}</aside>
-  <section class="main">
+  <section class="main" style="--card-count:{{ card_count }}">
+    {{ banner }}
     <section class="visual">
       <section class="media-column"><figure class="hero">{{ hero }}</figure>{{ division }}</section>
       <header>{{ title }}</header>
